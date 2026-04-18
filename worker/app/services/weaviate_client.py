@@ -36,6 +36,8 @@ def ensure_collection() -> None:
                     Property(name="message", data_type=DataType.TEXT),
                     Property(name="diff", data_type=DataType.TEXT),
                     Property(name="author", data_type=DataType.TEXT),
+                    Property(name="chunk_index", data_type=DataType.INT),
+                    Property(name="chunk_text", data_type=DataType.TEXT),
                 ],
             )
     finally:
@@ -67,6 +69,8 @@ def upsert_commit(commit_data: dict, vector: list[float]) -> None:
                 "message": commit_data["message"],
                 "diff": commit_data.get("diff", ""),
                 "author": commit_data.get("author", ""),
+                "chunk_index": commit_data.get("chunk_index", 0),
+                "chunk_text": commit_data.get("chunk_text", ""),
             },
             vector=vector,
         )
