@@ -35,6 +35,8 @@ def create_collection(client: weaviate.WeaviateClient) -> None:
             Property(name="message", data_type=DataType.TEXT),
             Property(name="diff", data_type=DataType.TEXT),
             Property(name="author", data_type=DataType.TEXT),
+            Property(name="chunk_index", data_type=DataType.INT),
+            Property(name="chunk_text", data_type=DataType.TEXT),
         ],
     )
 

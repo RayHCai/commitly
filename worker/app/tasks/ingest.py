@@ -1,7 +1,8 @@
 import asyncio
 import logging
 
-from app.services import express, gemini, weaviate_client
+from app.services import express, weaviate_client
+from app.services.pipeline import ingest_document, prepare_commit_text
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -27,19 +28,16 @@ def ingest_commits(self, user_id: str, repo_names: list[str]) -> dict:
 
         for commit in commits:
             try:
-                text = f"{commit.get('message', '')}\n\n{commit.get('diff', '')}"
-                vector = gemini.embed_text(text)
-
-                commit_data = {
+                text = prepare_commit_text(commit)
+                metadata = {
                     "sha": commit["sha"],
-                    "user_id": user_id,
                     "repo_name": repo_name,
                     "message": commit.get("message", ""),
                     "diff": commit.get("diff", ""),
                     "author": commit.get("author", ""),
                 }
-                weaviate_client.upsert_commit(commit_data, vector)
-                total_ingested += 1
+                chunks_stored = ingest_document(text, metadata, user_id)
+                total_ingested += chunks_stored
             except Exception as e:
                 logger.error(
                     f"Failed to process commit {commit.get('sha', '?')}: {e}"
