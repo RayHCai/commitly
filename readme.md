@@ -1,0 +1,17 @@
+- Github oAuth
+- Show all contributed repositories for a user
+- Select ones (default to all selected)
+- Iterate through every commit and diff and put on queue for on-chain processing and scoring
+    - This is heavily rate-limited, so I’m thinking for demo we can just limit to 1 or 2 repos per user
+- On-chain processing uses decentralized AI (different agents that don’t interact with each other) to deliberate and pick a final verdict for a scoring and complexity of a change
+    - Start from each repo → look at each commit in context
+    - Measure complexity
+- Create a database of changes in a DB with tags → easy for filtering and assignment (technologies, etc)
+- Single dashboard that shows all links and create links
+- Create general link → show top contributions, etc
+- Create specific link:
+    - Paste in a job posting URL
+    - Agent worker scrapes
+    - Searched DB to find relevant tags
+    - Curates the best in your page
+- See all views in pages, etc in dashboard
