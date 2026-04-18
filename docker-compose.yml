@@ -1,0 +1,53 @@
+services:
+  api:
+    build: ./worker
+    ports:
+      - "8000:8000"
+    env_file: ./worker/.env
+    depends_on:
+      - redis
+      - weaviate
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  worker-ingest:
+    build: ./worker
+    command: celery -A app.tasks.celery_app:celery_app worker -Q ingest -c 4 --loglevel=info
+    env_file: ./worker/.env
+    depends_on:
+      - redis
+      - weaviate
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  worker-create:
+    build: ./worker
+    command: celery -A app.tasks.celery_app:celery_app worker -Q create -c 2 --loglevel=info
+    env_file: ./worker/.env
+    depends_on:
+      - redis
+      - weaviate
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.28.4
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: none
+      CLUSTER_HOSTNAME: node1
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+volumes:
+  weaviate_data:
