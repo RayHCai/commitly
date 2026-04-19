@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import { fetchWithRetry } from "../utils/fetchWithRetry";
-import { env } from "../config/env";
-import * as linkService from "../services/link.service";
-import { prisma } from "../config/prisma";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { fetchWithRetry } from "../utils/fetchWithRetry.js";
+import { env } from "../config/env.js";
+import * as linkService from "../services/link.service.js";
+import { prisma } from "../config/prisma.js";
 
 export const getUserLinks = asyncHandler(
   async (req: Request, res: Response) => {

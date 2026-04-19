@@ -1,5 +1,5 @@
-import { prisma } from "../config/prisma";
-import { ApiError } from "../utils/ApiError";
+import { prisma } from "../config/prisma.js";
+import { ApiError } from "../utils/ApiError.js";
 
 interface MatchedCommitInput {
   commitSha: string;

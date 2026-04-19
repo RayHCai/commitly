@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { authenticate, serviceOnly } from "../middleware/auth";
+import { authenticate, serviceOnly } from "../middleware/auth.js";
 import {
   createRequirements,
   replaceRequirements,
   getLinkRequirements,
   getMyRequirements,
-} from "../controllers/requirement.controller";
+} from "../controllers/requirement.controller.js";
 
 export const requirementRoutes = Router();
 

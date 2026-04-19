@@ -1,7 +1,7 @@
 import { Octokit } from "octokit";
-import { prisma } from "../config/prisma";
-import { cacheGet, cacheSet } from "../config/redis";
-import { ApiError } from "../utils/ApiError";
+import { prisma } from "../config/prisma.js";
+import { cacheGet, cacheSet } from "../config/redis.js";
+import { ApiError } from "../utils/ApiError.js";
 
 async function getOctokitForUser(userId: string) {
   const user = await prisma.user.findUnique({

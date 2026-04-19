@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, serviceOnly } from "../middleware/auth";
+import { authenticate, serviceOnly } from "../middleware/auth.js";
 import {
   createRepository,
   getRepository,
@@ -8,7 +8,7 @@ import {
   deleteRepositoriesBatch,
   triggerIngestion,
   getTaskStatus,
-} from "../controllers/repository.controller";
+} from "../controllers/repository.controller.js";
 
 export const repositoryRoutes = Router();
 

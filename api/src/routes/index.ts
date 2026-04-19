@@ -1,13 +1,13 @@
 import { Router } from "express";
-import { authRoutes } from "./auth.routes";
-import { repositoryRoutes } from "./repository.routes";
-import { analysisRoutes } from "./analysis.routes";
-import { linkRoutes } from "./link.routes";
-import { linkViewRoutes } from "./linkView.routes";
-import { analyticsRoutes } from "./analytics.routes";
-import { userRoutes } from "./user.routes";
-import { githubRoutes } from "./github.routes";
-import { requirementRoutes } from "./requirement.routes";
+import { authRoutes } from "./auth.routes.js";
+import { repositoryRoutes } from "./repository.routes.js";
+import { analysisRoutes } from "./analysis.routes.js";
+import { linkRoutes } from "./link.routes.js";
+import { linkViewRoutes } from "./linkView.routes.js";
+import { analyticsRoutes } from "./analytics.routes.js";
+import { userRoutes } from "./user.routes.js";
+import { githubRoutes } from "./github.routes.js";
+import { requirementRoutes } from "./requirement.routes.js";
 
 export const router = Router();
 

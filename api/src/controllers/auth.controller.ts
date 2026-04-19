@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import { env } from "../config/env";
-import { prisma } from "../config/prisma";
-import * as authService from "../services/auth.service";
-import * as githubService from "../services/github.service";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { env } from "../config/env.js";
+import { prisma } from "../config/prisma.js";
+import * as authService from "../services/auth.service.js";
+import * as githubService from "../services/github.service.js";
 
 export const createPendingJob = asyncHandler(
   async (req: Request, res: Response) => {

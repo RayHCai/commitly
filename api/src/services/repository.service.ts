@@ -1,6 +1,6 @@
-import { prisma } from "../config/prisma";
-import { env } from "../config/env";
-import { fetchWithRetry } from "../utils/fetchWithRetry";
+import { prisma } from "../config/prisma.js";
+import { env } from "../config/env.js";
+import { fetchWithRetry } from "../utils/fetchWithRetry.js";
 
 interface CreateRepositoryInput {
   userId: string;

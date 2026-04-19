@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { viewLink, viewGeneralProfile } from "../controllers/linkView.controller";
+import { viewLink, viewGeneralProfile } from "../controllers/linkView.controller.js";
 
 export const linkViewRoutes = Router();
 

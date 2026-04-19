@@ -1,7 +1,7 @@
 import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { s3Client } from "../config/s3";
-import { env } from "../config/env";
+import { s3Client } from "../config/s3.js";
+import { env } from "../config/env.js";
 
 export async function generatePresignedDownloadUrl(s3Key: string): Promise<string> {
   const command = new GetObjectCommand({

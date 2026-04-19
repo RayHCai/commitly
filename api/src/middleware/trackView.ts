@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { prisma } from "../config/prisma";
+import { prisma } from "../config/prisma.js";
 
 export const trackView = (customLinkId: string, req: Request) => {
   prisma.linkView

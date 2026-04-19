@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import * as requirementService from "../services/requirement.service";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import * as requirementService from "../services/requirement.service.js";
 
 // Service-only: worker calls this after matching commits to requirements
 export const createRequirements = asyncHandler(

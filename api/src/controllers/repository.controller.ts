@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import * as repositoryService from "../services/repository.service";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import * as repositoryService from "../services/repository.service.js";
 
 export const createRepository = asyncHandler(
   async (req: Request, res: Response) => {

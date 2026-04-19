@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { env } from "../config/env";
-import { prisma } from "../config/prisma";
-import { ApiError } from "../utils/ApiError";
+import { env } from "../config/env.js";
+import { prisma } from "../config/prisma.js";
+import { ApiError } from "../utils/ApiError.js";
 
 async function authenticateServiceToken(req: Request) {
   const serviceToken = req.headers["x-service-token"] as string | undefined;

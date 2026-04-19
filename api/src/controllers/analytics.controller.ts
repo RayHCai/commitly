@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import * as analyticsService from "../services/analytics.service";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import * as analyticsService from "../services/analytics.service.js";
 
 export const getLinkAnalytics = asyncHandler(
   async (req: Request, res: Response) => {
