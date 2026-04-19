@@ -1,8 +1,14 @@
+import logging
+import uuid as uuid_lib
+
 import weaviate
 from weaviate.classes.config import DataType, Property
 from weaviate.classes.tenants import Tenant, TenantActivityStatus
+from weaviate.exceptions import UnexpectedStatusCodeError
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = "Commit"
 
@@ -38,6 +44,7 @@ def ensure_collection() -> None:
                     Property(name="author", data_type=DataType.TEXT),
                     Property(name="chunk_index", data_type=DataType.INT),
                     Property(name="chunk_text", data_type=DataType.TEXT),
+                    Property(name="tags", data_type=DataType.TEXT_ARRAY),
                 ],
             )
     finally:
@@ -56,24 +63,42 @@ def ensure_tenant(user_id: str) -> None:
         client.close()
 
 
+def _commit_uuid(sha: str, chunk_index: int) -> str:
+    """Generate a deterministic UUID from commit sha and chunk index."""
+    return str(uuid_lib.uuid5(uuid_lib.NAMESPACE_DNS, f"{sha}:{chunk_index}"))
+
+
 def upsert_commit(commit_data: dict, vector: list[float]) -> None:
-    """Store a commit with its embedding vector in the user's tenant."""
+    """Store a commit chunk with its embedding vector in the user's tenant.
+
+    Uses a deterministic UUID based on sha:chunk_index so that
+    re-ingesting the same commit is idempotent (duplicates are skipped).
+    """
+    sha = commit_data["sha"]
+    chunk_index = commit_data.get("chunk_index", 0)
+    deterministic_uuid = _commit_uuid(sha, chunk_index)
+
     client = get_client()
     try:
         collection = client.collections.get(COLLECTION_NAME)
         tenant_collection = collection.with_tenant(commit_data["user_id"])
-        tenant_collection.data.insert(
-            properties={
-                "commit_sha": commit_data["sha"],
-                "repo_name": commit_data["repo_name"],
-                "message": commit_data["message"],
-                "diff": commit_data.get("diff", ""),
-                "author": commit_data.get("author", ""),
-                "chunk_index": commit_data.get("chunk_index", 0),
-                "chunk_text": commit_data.get("chunk_text", ""),
-            },
-            vector=vector,
-        )
+        try:
+            tenant_collection.data.insert(
+                properties={
+                    "commit_sha": sha,
+                    "repo_name": commit_data["repo_name"],
+                    "message": commit_data["message"],
+                    "diff": commit_data.get("diff", ""),
+                    "author": commit_data.get("author", ""),
+                    "chunk_index": chunk_index,
+                    "chunk_text": commit_data.get("chunk_text", ""),
+                    "tags": commit_data.get("tags", []),
+                },
+                vector=vector,
+                uuid=deterministic_uuid,
+            )
+        except UnexpectedStatusCodeError:
+            logger.debug(f"Chunk {sha}:{chunk_index} already exists, skipping")
     finally:
         client.close()
 
@@ -98,6 +123,7 @@ def search_similar(
                 "message": obj.properties["message"],
                 "diff": obj.properties["diff"],
                 "author": obj.properties["author"],
+                "tags": obj.properties.get("tags", []),
                 "distance": obj.metadata.distance,
             }
             for obj in results.objects

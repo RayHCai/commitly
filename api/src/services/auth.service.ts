@@ -3,7 +3,7 @@ import { Octokit } from "octokit";
 import { prisma } from "../config/prisma";
 import { env } from "../config/env";
 import { ApiError } from "../utils/ApiError";
-import { generateSlug } from "../utils/slug";
+import * as linkService from "./link.service";
 
 interface GitHubTokenResponse {
   access_token: string;
@@ -68,16 +68,9 @@ export async function handleGithubCallback(
     });
 
     for (const pending of pendingJobs) {
-      const slug = generateSlug(
-        new URL(pending.jobUrl).hostname + "-" + Date.now()
-      );
-
-      await prisma.customLink.create({
-        data: {
-          userId: user.id,
-          slug,
-          targetUrl: pending.jobUrl,
-        },
+      await linkService.createPendingLink({
+        userId: user.id,
+        jobUrl: pending.jobUrl,
       });
     }
 

@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
+import { fetchWithRetry } from "../utils/fetchWithRetry";
 import { env } from "../config/env";
 import { prisma } from "../config/prisma";
 import * as authService from "../services/auth.service";
+import * as githubService from "../services/github.service";
 
 export const createPendingJob = asyncHandler(
   async (req: Request, res: Response) => {
@@ -65,7 +67,10 @@ export const githubCallback = asyncHandler(
     const sessionId =
       state && typeof state === "string" ? state : undefined;
 
-    const { jwt } = await authService.handleGithubCallback(code, sessionId);
+    const { jwt, user } = await authService.handleGithubCallback(
+      code,
+      sessionId
+    );
 
     const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
     redirectUrl.searchParams.set("token", jwt);
@@ -73,5 +78,48 @@ export const githubCallback = asyncHandler(
       redirectUrl.searchParams.set("jobLinked", "true");
     }
     res.redirect(redirectUrl.toString());
+
+    // Fire-and-forget with retry: fetch user repos, upsert in DB, and trigger worker ingestion
+    githubService
+      .getUserRepos(user.id)
+      .then(async (repos) => {
+        await Promise.all(
+          repos.map((r) =>
+            prisma.repository.upsert({
+              where: {
+                userId_githubRepoId: {
+                  userId: user.id,
+                  githubRepoId: r.id,
+                },
+              },
+              update: {
+                name: r.name,
+                fullName: r.full_name,
+                url: r.html_url,
+                isPrivate: r.private,
+              },
+              create: {
+                userId: user.id,
+                githubRepoId: r.id,
+                name: r.name,
+                fullName: r.full_name,
+                url: r.html_url,
+                isPrivate: r.private,
+              },
+            })
+          )
+        );
+
+        const repoNames = repos.map((r) => r.full_name);
+        return fetchWithRetry(`${env.WORKER_URL}/ingest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: user.id,
+            repo_names: repoNames,
+          }),
+        });
+      })
+      .catch((err) => console.error("Failed to trigger ingest after retries:", err));
   }
 );

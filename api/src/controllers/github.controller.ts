@@ -15,13 +15,15 @@ export const getRepoCommits = asyncHandler(
     const repo = req.params.repo as string;
     const page = parseInt(req.query.page as string) || 1;
     const perPage = parseInt(req.query.per_page as string) || 30;
+    const since = req.query.since as string | undefined;
 
     const commits = await githubService.getRepoCommits(
       req.user!.userId,
       owner,
       repo,
       page,
-      perPage
+      perPage,
+      since
     );
     res.json({ success: true, data: commits });
   }

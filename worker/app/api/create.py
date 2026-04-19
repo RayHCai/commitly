@@ -10,7 +10,7 @@ router = APIRouter(tags=["create"])
 @router.post("/create", response_model=TaskResponse)
 async def start_create(request: CreateRequest):
     """Queue a create-matched-contributions job."""
-    task = create_matched.delay(request.user_id, request.query)
+    task = create_matched.delay(request.user_id, request.url, request.link_id)
     return TaskResponse(task_id=task.id)
 
 

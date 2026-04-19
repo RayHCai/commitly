@@ -9,31 +9,46 @@ services:
       - weaviate
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   worker-ingest:
     build: ./worker
-    command: celery -A app.tasks.celery_app:celery_app worker -Q ingest -c 4 --loglevel=info
+    command: celery -A app.tasks.celery_app:celery_app worker -Q ingest -c 8 --loglevel=info
     env_file: ./worker/.env
     depends_on:
       - redis
       - weaviate
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 2g
 
   worker-create:
     build: ./worker
-    command: celery -A app.tasks.celery_app:celery_app worker -Q create -c 2 --loglevel=info
+    command: celery -A app.tasks.celery_app:celery_app worker -Q create -c 4 --loglevel=info
     env_file: ./worker/.env
     depends_on:
       - redis
       - weaviate
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
   redis:
     image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
 
   weaviate:
     image: cr.weaviate.io/semitechnologies/weaviate:1.28.4
@@ -51,3 +66,4 @@ services:
 
 volumes:
   weaviate_data:
+  redis_data:

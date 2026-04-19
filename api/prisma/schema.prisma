@@ -33,9 +33,10 @@ model Repository {
   name         String
   fullName     String
   url          String
-  isPrivate    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isPrivate      Boolean   @default(false)
+  lastIngestedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   commits Commit[]
@@ -65,15 +66,23 @@ model Commit {
   @@map("commits")
 }
 
+enum LinkStatus {
+  PENDING
+  ACTIVE
+  FAILED
+}
+
 model CustomLink {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   userId    String
   slug      String
   title     String?
   targetUrl String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  jobUrl    String?
+  status    LinkStatus @default(PENDING)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   views LinkView[]
@@ -95,6 +104,7 @@ model LinkView {
 
   @@index([customLinkId])
   @@index([viewedAt])
+  @@index([customLinkId, viewedAt])
   @@map("link_views")
 }
 
@@ -110,6 +120,7 @@ model AnalysisRequest {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, createdAt])
   @@map("analysis_requests")
 }
 
