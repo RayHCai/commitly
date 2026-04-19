@@ -78,6 +78,49 @@ export const createGeneralLink = asyncHandler(
   }
 );
 
+export const forceCreateGeneralLink = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+
+    // Check if an ACTIVE general link already exists
+    const existing = await linkService.getExistingGeneralLink(userId);
+    if (existing && existing.status === "ACTIVE") {
+      return res.json({ success: true, data: { id: existing.id, status: existing.status, existed: true } });
+    }
+
+    // Create or get existing PENDING link
+    const link = await linkService.createGeneralLink(userId);
+
+    // Dispatch to worker
+    let taskId: string | null = null;
+    try {
+      const workerRes = await fetchWithRetry(`${env.WORKER_URL}/create-general`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          link_id: link.id,
+        }),
+      });
+      if (workerRes.ok) {
+        const workerData = await workerRes.json() as { task_id?: string };
+        taskId = workerData.task_id ?? null;
+      }
+    } catch (err) {
+      console.error("Failed to dispatch general link to worker:", err);
+    }
+
+    res.status(202).json({
+      success: true,
+      data: {
+        id: link.id,
+        taskId,
+        status: "PENDING",
+      },
+    });
+  }
+);
+
 export const completeGeneralLink = asyncHandler(
   async (req: Request, res: Response) => {
     const id = req.params.id as string;

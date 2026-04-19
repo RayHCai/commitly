@@ -21,6 +21,10 @@ const apiLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { success: false, message: "Too many requests, please try again later" },
+  skip: (req) => {
+    // Exempt internal worker requests authenticated via service token
+    return req.headers["x-service-token"] === env.SERVICE_TOKEN;
+  },
 });
 
 const authLimiter = rateLimit({

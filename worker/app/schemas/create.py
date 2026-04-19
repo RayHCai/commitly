@@ -7,6 +7,11 @@ class CreateRequest(BaseModel):
     link_id: str
 
 
+class CreateGeneralRequest(BaseModel):
+    user_id: str
+    link_id: str
+
+
 class JobData(BaseModel):
     company: str
     job_title: str

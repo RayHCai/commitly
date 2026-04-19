@@ -73,6 +73,12 @@ export async function completeLink(linkId: string, data: CompleteLinkInput) {
   });
 }
 
+export async function getExistingGeneralLink(userId: string) {
+  return prisma.customLink.findUnique({
+    where: { userId_slug: { userId, slug: "general" } },
+  });
+}
+
 export async function createGeneralLink(userId: string) {
   const existing = await prisma.customLink.findUnique({
     where: { userId_slug: { userId, slug: "general" } },
