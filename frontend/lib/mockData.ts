@@ -62,6 +62,329 @@ export const mockJob: JobContext = {
   jobUrl: "#",
 };
 
+export type SkillCommit = {
+  id: string;
+  commitMessage: string;
+  commitUrl: string;
+  sha: string;
+  date: string;
+  dateLabel: string;
+  repoName: string;
+  repoType: "personal" | "open-source";
+  plainEnglishTitle: string;
+  plainEnglishSummary: string;
+};
+
+export type SkillAccent = {
+  solid: string;
+  tint: string;
+  text: string;
+};
+
+export type RequiredSkill = {
+  id: string;
+  name: string;
+  tagline: string;
+  whyItFitsTheRole: string;
+  totalCommitCount: number;
+  repoCount: number;
+  accent: SkillAccent;
+  bestCommits: SkillCommit[];
+};
+
+export const requiredSkills: RequiredSkill[] = [
+  {
+    id: "typescript",
+    name: "TypeScript",
+    tagline: "Production-quality type-safe code across 3 shipped projects.",
+    whyItFitsTheRole:
+      "The role requires engineers who write TypeScript that holds up under real customer load. Jihan's commits show exactly that: strong typing as a tool for preventing bugs, not bureaucracy.",
+    totalCommitCount: 14,
+    repoCount: 3,
+    accent: {
+      solid: "#1d4ed8",
+      tint: "rgba(29, 78, 216, 0.14)",
+      text: "#1e40af",
+    },
+    bestCommits: [
+      {
+        id: "ts-1",
+        commitMessage: "refactor(sync): type-safe customer sync pipeline",
+        commitUrl: "#",
+        sha: "a4f9c2e",
+        date: "2024-09-12",
+        dateLabel: "SEP 2024",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Rebuilt customer sync so invalid data fails in development with strong typing discipline before production.",
+        plainEnglishSummary:
+          "Jihan redesigned the customer sync pipeline so new customer types fail during development instead of breaking in production. Prevented an entire category of outage for Iris customers.",
+      },
+      {
+        id: "ts-2",
+        commitMessage: "fix(next): handle edge-case hydration mismatch",
+        commitUrl: "#",
+        sha: "d2afc14",
+        date: "2025-11-01",
+        dateLabel: "NOV 2025",
+        repoName: "vercel/next.js",
+        repoType: "open-source",
+        plainEnglishTitle:
+          "Contributed hydration fix merged into Next.js core; resolved rare async layout mismatch.",
+        plainEnglishSummary:
+          "Jihan submitted and merged a PR to Next.js core that resolved a rare hydration mismatch in async layouts. The fix is now part of Next.js itself.",
+      },
+      {
+        id: "ts-3",
+        commitMessage: "feat(agents): typed interfaces for deliberation pipeline",
+        commitUrl: "#",
+        sha: "58b9e03",
+        date: "2026-03-10",
+        dateLabel: "MAR 2026",
+        repoName: "gmkapur/commitly",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Defined strict interfaces for every agent handoff for compile-time safety across Commitly.",
+        plainEnglishSummary:
+          "Jihan modeled every agent input and output as a strict type. Any change breaks at compile time, not in production.",
+      },
+    ],
+  },
+  {
+    id: "system-design",
+    name: "System Design",
+    tagline: "Architects production systems that scale independently.",
+    whyItFitsTheRole:
+      "The role asks for engineers who can design systems, not just implement features. Jihan has shipped multi-component systems where each piece can scale on its own.",
+    totalCommitCount: 9,
+    repoCount: 2,
+    accent: {
+      solid: "#7c3aed",
+      tint: "rgba(124, 58, 237, 0.14)",
+      text: "#5b21b6",
+    },
+    bestCommits: [
+      {
+        id: "sd-1",
+        commitMessage: "feat(arch): separate agent workers from dashboard",
+        commitUrl: "#",
+        sha: "4b1dc27",
+        date: "2025-06-04",
+        dateLabel: "JUN 2025",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Split workers from dashboard into separate deployables for independent scaling and clearer boundaries.",
+        plainEnglishSummary:
+          "Jihan split Iris into two deployable pieces. The customer-facing dashboard stays fast even when the agent workers are under heavy load.",
+      },
+      {
+        id: "sd-2",
+        commitMessage: "feat(agents): deliberation pipeline across specialized agents",
+        commitUrl: "#",
+        sha: "58b9e03",
+        date: "2026-03-10",
+        dateLabel: "MAR 2026",
+        repoName: "gmkapur/commitly",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Architected six-agent deliberation pipeline with specialized roles converging on one ranked output.",
+        plainEnglishSummary:
+          "Jihan architected a multi-agent system where six specialized agents each evaluate a different dimension of a candidate's code and deliberate to produce a single output.",
+      },
+      {
+        id: "sd-3",
+        commitMessage: "feat(queue): bounded executor with cooperative cancel on deploy",
+        commitUrl: "#",
+        sha: "f21a880",
+        date: "2025-11-18",
+        dateLabel: "NOV 2025",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Connected deploy signals to job runner so background work drains cleanly during releases.",
+        plainEnglishSummary:
+          "Jihan capped concurrent workers and wired deploy signals so background jobs exit cleanly instead of orphaning partial work.",
+      },
+    ],
+  },
+  {
+    id: "api-integration",
+    name: "API Integration",
+    tagline: "Connects third-party services cleanly and safely.",
+    whyItFitsTheRole:
+      "The role lives at the seams between services. Jihan has shipped integrations that made adding the next one trivial instead of painful.",
+    totalCommitCount: 7,
+    repoCount: 2,
+    accent: {
+      solid: "#ea580c",
+      tint: "rgba(234, 88, 12, 0.14)",
+      text: "#9a3412",
+    },
+    bestCommits: [
+      {
+        id: "api-1",
+        commitMessage: "feat(crm): unified provider integration layer",
+        commitUrl: "#",
+        sha: "e19b408",
+        date: "2025-05-14",
+        dateLabel: "MAY 2025",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Unified CRM connectors behind one abstraction so new integrations ship without one-off glue code.",
+        plainEnglishSummary:
+          "Jihan built a shared integration layer so Iris talks to multiple CRMs through one interface. Adding a fourth CRM now takes less than a day.",
+      },
+      {
+        id: "api-2",
+        commitMessage: "feat(chess): chess-api.com move analysis integration",
+        commitUrl: "#",
+        sha: "af3d801",
+        date: "2025-09-20",
+        dateLabel: "SEP 2025",
+        repoName: "gmkapur/chess-coach",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Integrated remote chess API in MV3 extension with rate limits, retries, and failure UX in the client.",
+        plainEnglishSummary:
+          "Jihan integrated chess-api.com into a Manifest V3 extension, handling rate limits and network failures gracefully.",
+      },
+      {
+        id: "api-3",
+        commitMessage: "feat(webhooks): signed inbound CRM webhooks with idempotent replay",
+        commitUrl: "#",
+        sha: "c91e204",
+        date: "2026-01-22",
+        dateLabel: "JAN 2026",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Secured inbound CRM webhooks with signatures and idempotent replay for safe handling of duplicate delivery.",
+        plainEnglishSummary:
+          "Jihan verified webhook signatures and stored dedupe keys so duplicate deliveries never double-apply integration side effects.",
+      },
+    ],
+  },
+  {
+    id: "async-patterns",
+    name: "Async Patterns",
+    tagline: "Handles long-running work without blocking users.",
+    whyItFitsTheRole:
+      "The role requires engineers comfortable with concurrency. Jihan has shipped background pipelines that keep apps responsive even under heavy load.",
+    totalCommitCount: 8,
+    repoCount: 2,
+    accent: {
+      solid: "#0e7490",
+      tint: "rgba(14, 116, 144, 0.14)",
+      text: "#155e75",
+    },
+    bestCommits: [
+      {
+        id: "async-1",
+        commitMessage: "feat(pipeline): background processing for long surveys",
+        commitUrl: "#",
+        sha: "3f71aa8",
+        date: "2025-08-07",
+        dateLabel: "AUG 2025",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Moved heavy survey processing to background jobs to keep UI responsive on large workloads.",
+        plainEnglishSummary:
+          "Jihan rebuilt Iris's survey pipeline to run in the background so the app stays responsive even with 10,000+ row surveys.",
+      },
+      {
+        id: "async-2",
+        commitMessage: "perf(eval): parallel batch prompt evaluation",
+        commitUrl: "#",
+        sha: "7c2e91d",
+        date: "2025-02-20",
+        dateLabel: "FEB 2025",
+        repoName: "joinhandshake/prompt-eval",
+        repoType: "open-source",
+        plainEnglishTitle:
+          "Parallelized thousands of model evaluations in batch runs without blowing rate limits.",
+        plainEnglishSummary:
+          "Jihan contributed an async batch runner to Handshake's model evaluation tool. Ran 5,000 evals in parallel without tripping rate limits.",
+      },
+      {
+        id: "async-3",
+        commitMessage: "feat(sync): chunked spreadsheet export streaming for large tenants",
+        commitUrl: "#",
+        sha: "19aa77d",
+        date: "2026-02-04",
+        dateLabel: "FEB 2026",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Streamed large exports in bounded chunks for stable memory use on multi-million-row tenants.",
+        plainEnglishSummary:
+          "Jihan chunked outbound downloads so multi-million-row exports stream safely without blowing the heap.",
+      },
+    ],
+  },
+  {
+    id: "authentication",
+    name: "Authentication",
+    tagline: "Owns session and identity layers end to end.",
+    whyItFitsTheRole:
+      "The role involves user-facing auth. Jihan has shipped a single source of truth for login state across a production codebase.",
+    totalCommitCount: 8,
+    repoCount: 1,
+    accent: {
+      solid: "#15803d",
+      tint: "rgba(21, 128, 61, 0.14)",
+      text: "#14532d",
+    },
+    bestCommits: [
+      {
+        id: "auth-1",
+        commitMessage: "feat(auth): centralize session verification",
+        commitUrl: "#",
+        sha: "b83d1a5",
+        date: "2024-11-03",
+        dateLabel: "NOV 2024",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Centralized session verification into one auth path, replacing scattered checks across Iris.",
+        plainEnglishSummary:
+          "Jihan built a single source of truth for how the app checks who is logged in. Replaced scattered login logic and made the auth system easy to reason about.",
+      },
+      {
+        id: "auth-2",
+        commitMessage: "fix(oauth): refresh rotation with tenant scoped session lookup",
+        commitUrl: "#",
+        sha: "e96f712",
+        date: "2025-04-09",
+        dateLabel: "APR 2025",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Implemented OAuth refresh rotation with tenant-scoped session lookup for stronger isolation.",
+        plainEnglishSummary:
+          "Jihan tightened refresh flows so each tenant resolves session data in isolation without cross-customer leakage.",
+      },
+      {
+        id: "auth-3",
+        commitMessage: "feat(sso): match SAML audience rules to customer config",
+        commitUrl: "#",
+        sha: "4c803d2",
+        date: "2025-12-01",
+        dateLabel: "DEC 2025",
+        repoName: "gmkapur/iris-core",
+        repoType: "personal",
+        plainEnglishTitle:
+          "Configured SAML audience validation per tenant to cut down on opaque enterprise SSO failures.",
+        plainEnglishSummary:
+          "Jihan wired SAML checks to per-tenant settings so enterprise SSO failures become guided fixes instead of silent rejects.",
+      },
+    ],
+  },
+];
+
 /**
  * Top role-matched skills for the public recruiter page. Each skill includes
  * three commits with proof written for non-technical readers.

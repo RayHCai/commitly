@@ -15,9 +15,12 @@ function navLinkClass(active: boolean) {
 
 export function MarketingSiteHeader({
   leading,
+  className,
 }: {
   /** Optional content before the logo (e.g. \"Back to summary\" on commits view) */
   leading?: React.ReactNode;
+  /** Merged onto the header element (e.g. landing background) */
+  className?: string;
 }) {
   const pathname = usePathname();
 
@@ -26,7 +29,12 @@ export function MarketingSiteHeader({
   const homeActive = pathname === "/";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[0.5px] border-[#e5e5e0] bg-background">
+    <header
+      className={cn(
+        "sticky top-0 z-40 border-b border-[0.5px] border-[#e5e5e0] bg-background",
+        className
+      )}
+    >
       <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-6 px-6 py-5">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           {leading}

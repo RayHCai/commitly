@@ -12,6 +12,25 @@
   .animate-caret-blink {
     animation: caret-blink 1.05s steps(1, end) infinite;
   }
+
+  @media print {
+    @page {
+      margin: 0.5in;
+      size: letter;
+    }
+
+    body {
+      background: #fafaf7 !important;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    .cv-print-main {
+      max-width: 100% !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+  }
 }
 
 @keyframes caret-blink {
@@ -81,6 +100,15 @@
     --code-comment: #8a857a; /* muted */
     --code-added: #16a34a;
     --code-removed: #dc2626;
+
+    /* Landing scroll theme (cream + skill accents) */
+    --landing-cream: #edecea;
+    --landing-muted: #858585;
+    --landing-skill-typescript: #2b54d1;
+    --landing-skill-system-design: #7059f5;
+    --landing-skill-api-integration: #d15d31;
+    --landing-skill-authentication: #c41e3a;
+    --landing-skill-async-patterns: #2d5a43;
   }
 
   .paper-bg {
@@ -92,6 +120,18 @@
         transparent 60%
       ),
       url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.1  0 0 0 0 0.08  0 0 0 0 0.05  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-blend-mode: multiply;
+  }
+
+  .landing-scroll-bg {
+    background-color: var(--landing-cream);
+    background-image:
+      radial-gradient(
+        1100px 700px at 40% -15%,
+        rgba(255, 255, 255, 0.45),
+        transparent 55%
+      ),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0.07  0 0 0 0 0.07  0 0 0 0 0.07  0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
     background-blend-mode: multiply;
   }
 
@@ -119,5 +159,18 @@
   /* Headings use display serif via Tailwind font-serif */
   .font-heading {
     font-family: var(--font-display), Georgia, serif;
+  }
+
+  /* Full-viewport scroll sections (home landing) */
+  html.landing-scroll-home {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html.landing-scroll-home {
+      scroll-snap-type: none;
+      scroll-behavior: auto;
+    }
   }
 }
