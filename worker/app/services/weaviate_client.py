@@ -276,11 +276,15 @@ def search_top_commits_batch(
     semantic_weight: float = 0.4,
     candidate_limit: int = 30,
     distance_threshold: float = 0.55,
+    query_keywords: list[str | None] | None = None,
 ) -> list[list[dict]]:
     """Search for top commits for multiple queries using a single connection.
 
     Returns a list of result lists, one per query vector.
     Commits with distance > distance_threshold are filtered out as irrelevant.
+    When query_keywords are provided, only commits whose tags contain the keyword
+    are returned — if no such commits exist, the requirement returns empty rather
+    than surfacing unrelated commits.
     Final score combines semantic similarity with quality/complexity scores.
     """
     client = get_client()
@@ -289,7 +293,13 @@ def search_top_commits_batch(
         tenant_collection = collection.with_tenant(user_id)
 
         all_results = []
-        for query_vector in query_vectors:
+        for idx, query_vector in enumerate(query_vectors):
+            keyword = (
+                query_keywords[idx].lower().strip()
+                if query_keywords and idx < len(query_keywords) and query_keywords[idx]
+                else None
+            )
+
             results = tenant_collection.query.near_vector(
                 near_vector=query_vector,
                 limit=candidate_limit,
@@ -318,9 +328,25 @@ def search_top_commits_batch(
                 if sha not in seen or c["distance"] < seen[sha]["distance"]:
                     seen[sha] = c
 
+            # If a keyword is provided, only keep commits whose tags contain it.
+            # This prevents semantic drift where e.g. a "Rust" requirement matches
+            # Python/C++ commits that happen to discuss similar concepts.
+            # If no commits match the tag, return empty rather than false positives.
+            pool = list(seen.values())
+            if keyword:
+                tag_matched = [
+                    c for c in pool
+                    if any(keyword in tag.lower() for tag in c.get("tags", []))
+                ]
+                if tag_matched:
+                    pool = tag_matched
+                else:
+                    all_results.append([])
+                    continue
+
             # Compute weighted score: semantic similarity + complexity + quality
             scored = []
-            for commit in seen.values():
+            for commit in pool:
                 quality = commit.get("quality_score", 0.0)
                 complexity = commit.get("complexity_score", 0.0)
                 semantic_similarity = 1.0 - commit["distance"]
