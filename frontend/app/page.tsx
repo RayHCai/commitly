@@ -1,213 +1,179 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  BadgeCheck,
-  GitCommitHorizontal,
-  ContactRound,
-} from "lucide-react";
 
 import { HeroJobField } from "@/components/hero-job-field";
-import { HomeTopBar } from "@/components/home-top-bar";
+import { PaperSurface } from "@/components/recruiter/paper-surface";
 import { RecruiterOnePagerPreview } from "@/components/recruiter-one-pager-preview";
-import { TypewriterHeadline } from "@/components/typewriter-headline";
+import {
+  Scene,
+  SceneBody,
+  SceneHeadline,
+  SceneScrollHint,
+  SceneSubheading,
+} from "@/components/scene/scene";
 
-const fadeUpTransition = {
-  duration: 0.45,
-  ease: [0.22, 1, 0.36, 1] as const,
-};
-
-function FadeUp({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "0px 0px -12% 0px", amount: 0.25 }}
-      transition={fadeUpTransition}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function HeroFadeUp({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={fadeUpTransition}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-      {children}
-    </p>
-  );
-}
+const EASE: [number, number, number, number] = [0.22, 0.8, 0.26, 1];
 
 const steps = [
   {
     num: "01",
     title: "Paste a job.",
-    lines: [
-      "Drop in any job posting URL",
-      "and we extract the skills and signals.",
-    ],
+    body: "Drop in any job posting. We extract the skills and signals that matter.",
   },
   {
     num: "02",
     title: "Connect GitHub.",
-    lines: [
-      "We scan your commits, diffs, and repos",
-      "to find matching work.",
-    ],
+    body: "We read your commits and diffs to find the work that proves each skill.",
   },
   {
     num: "03",
-    title: "Share the link.",
-    lines: [
-      "Send one link that shows how your",
-      "code maps to the role.",
-    ],
+    title: "Share a link.",
+    body: "One page a recruiter can scan in a minute, backed by real commits.",
   },
 ] as const;
 
 const recruiterBullets = [
-  {
-    icon: BadgeCheck,
-    text: "Skills matched to the role, with evidence",
-  },
-  {
-    icon: GitCommitHorizontal,
-    text: "Real commits, with links to the exact code",
-  },
-  {
-    icon: ContactRound,
-    text: "Resume, LinkedIn, and grad date at a glance",
-  },
+  "Skills matched to the role, each backed by actual commits.",
+  "Click through to the exact code on GitHub.",
+  "Resume, LinkedIn, and grad date at a glance.",
 ] as const;
 
 export default function Home() {
   return (
-    <main className="bg-background">
-      <HomeTopBar />
-      <div className="mx-auto flex max-w-[960px] flex-col gap-24 px-6 pb-24 pt-8 sm:gap-28 sm:px-8 sm:pb-28 sm:pt-10 md:gap-[120px] md:pb-28 md:pt-12">
-        {/* Hero – bold typewriter headline */}
-        <HeroFadeUp>
-          <div className="flex min-w-0 justify-center overflow-x-auto overflow-y-hidden px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:overflow-visible">
-            <TypewriterHeadline className="leading-[1.05] text-[clamp(1.05rem,min(2.85vw+0.7rem,4.75rem),4.75rem)]" />
-          </div>
-          <p className="mx-auto mt-8 max-w-xl text-center text-pretty text-lg font-medium leading-snug text-foreground sm:mt-10 sm:text-xl md:mt-12 md:text-2xl md:leading-snug">
-            Paste a job. Connect GitHub. One link that proves how your work
-            fits the role.
-          </p>
+    <PaperSurface>
+      {/* Scene 1 — Hero */}
+      <Scene eyebrow="commitly" align="center">
+        <SceneHeadline as="h1" size="xl" className="text-center">
+          Your code,
+          <br />
+          <span className="italic text-[color:var(--ink-soft)]">
+            tailored to the job.
+          </span>
+        </SceneHeadline>
+        <SceneSubheading className="mx-auto text-center">
+          Paste a job. Connect GitHub. Share one link that proves your fit.
+        </SceneSubheading>
+        <SceneBody className="mx-auto w-full max-w-xl">
           <HeroJobField />
-        </HeroFadeUp>
+        </SceneBody>
+        <div className="mx-auto">
+          <SceneScrollHint />
+        </div>
+      </Scene>
 
-        {/* How it works */}
-        <FadeUp>
-          <div className="text-center md:text-left">
-            <SectionLabel>How it works</SectionLabel>
-            <div className="min-w-0 max-w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <h2 className="whitespace-nowrap font-serif text-3xl font-normal leading-snug tracking-tight text-foreground sm:text-4xl md:text-[2.25rem] md:leading-tight">
-                Three steps to a technical portfolio that{" "}
-                <span className="italic">speaks recruiter.</span>
-              </h2>
-            </div>
-          </div>
-          <div className="mt-12 grid gap-12 md:mt-14 md:grid-cols-3 md:gap-10 lg:gap-12">
-            {steps.map((step) => (
-              <div
-                key={step.num}
-                className="flex flex-col text-center md:text-left"
-              >
-                <span
-                  className="font-serif text-4xl font-normal leading-none text-accent md:text-[2.5rem]"
-                  aria-hidden
-                >
-                  {step.num}
-                </span>
-                <h3 className="mt-4 font-sans text-base font-semibold text-foreground">
-                  {step.title}
-                </h3>
-                <p className="mt-3 text-sm leading-relaxed text-[color:var(--text-secondary)]">
-                  {step.lines[0]}
-                  <br />
-                  <span
-                    className={
-                      step.num === "03"
-                        ? "inline-block whitespace-nowrap"
-                        : undefined
-                    }
-                  >
-                    {step.lines[1]}
-                  </span>
-                </p>
-              </div>
-            ))}
-          </div>
-        </FadeUp>
+      {/* Scene 2 — The problem */}
+      <Scene eyebrow="the problem">
+        <SceneHeadline size="2xl">
+          Resumes tell.
+          <br />
+          <span className="text-[color:var(--ink-muted)]">Commits prove.</span>
+        </SceneHeadline>
+        <SceneSubheading>
+          Bullets can&apos;t show how someone thinks. A commit can.
+        </SceneSubheading>
+      </Scene>
 
-        {/* Recruiter view */}
-        <FadeUp>
-          <div className="grid gap-10 md:grid-cols-2 md:items-start md:gap-12 lg:gap-14">
-            <div>
-              <div className="text-center md:text-left">
-                <SectionLabel>The recruiter view</SectionLabel>
-                <h2 className="font-serif text-3xl font-normal tracking-tight text-foreground sm:text-4xl">
-                  One page. Zero fluff.
-                </h2>
-              </div>
-              <ul className="mt-10 flex max-w-xl flex-col gap-5 md:mt-12">
-                {recruiterBullets.map(({ icon: Icon, text }) => (
-                  <li
-                    key={text}
-                    className="flex gap-4 text-left text-base leading-snug text-[color:var(--text-secondary)]"
-                  >
-                    <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-primary">
-                      <Icon className="size-4" strokeWidth={1.75} aria-hidden />
-                    </span>
-                    <span className="pt-1.5">{text}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div
-              className="mx-auto w-full max-w-md md:mx-0 md:max-w-none md:pt-2 lg:sticky lg:top-24"
-              role="region"
-              aria-label="Example one-page recruiter profile"
+      {/* Scene 3 — How it works */}
+      <Scene eyebrow="how it works">
+        <SceneHeadline size="lg">Three steps.</SceneHeadline>
+        <SceneSubheading>
+          From pasted job to shareable link in about a minute.
+        </SceneSubheading>
+        <SceneBody className="grid gap-10 md:mt-14 md:grid-cols-3 md:gap-10">
+          {steps.map((step, i) => (
+            <motion.div
+              key={step.num}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{
+                duration: 0.5,
+                delay: 0.15 + i * 0.1,
+                ease: EASE,
+              }}
+              className="flex flex-col"
             >
-              <RecruiterOnePagerPreview />
-            </div>
-          </div>
-        </FadeUp>
+              <span
+                className="font-mono text-[13px] font-medium tracking-[0.14em] text-[color:var(--code-number)]"
+                aria-hidden
+              >
+                {step.num}
+              </span>
+              <h3 className="mt-3 font-serif text-[28px] leading-tight tracking-tight text-[color:var(--ink)]">
+                {step.title}
+              </h3>
+              <p className="mt-3 text-[15px] leading-[1.6] text-[color:var(--ink-soft)]">
+                {step.body}
+              </p>
+            </motion.div>
+          ))}
+        </SceneBody>
+      </Scene>
 
-        {/* Footer */}
-        <footer className="border-t border-border-light pt-10 text-center">
-          <p className="text-xs text-muted-foreground">
-            Commitly · Hook Em Hacks 2026
-          </p>
-        </footer>
-      </div>
-    </main>
+      {/* Scene 4 — Recruiter view */}
+      <Scene eyebrow="what recruiters see">
+        <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-14">
+          <div>
+            <SceneHeadline size="lg">One page. Zero fluff.</SceneHeadline>
+            <SceneSubheading>
+              The evidence sits where they look, nothing more.
+            </SceneSubheading>
+            <SceneBody delay={0.3} className="mt-8 flex flex-col gap-4">
+              {recruiterBullets.map((text, i) => (
+                <motion.div
+                  key={text}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, amount: 0.4 }}
+                  transition={{
+                    duration: 0.45,
+                    delay: 0.4 + i * 0.08,
+                    ease: EASE,
+                  }}
+                  className="flex gap-3 text-[15px] leading-[1.55] text-[color:var(--ink-soft)]"
+                >
+                  <span
+                    aria-hidden
+                    className="mt-1.5 size-[6px] shrink-0 rounded-full bg-[color:var(--code-fn)]"
+                  />
+                  <span>{text}</span>
+                </motion.div>
+              ))}
+            </SceneBody>
+          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.6, delay: 0.25, ease: EASE }}
+            role="region"
+            aria-label="Example one-page recruiter profile"
+            className="w-full"
+          >
+            <RecruiterOnePagerPreview />
+          </motion.div>
+        </div>
+      </Scene>
+
+      {/* Scene 5 — Final CTA */}
+      <Scene eyebrow="start" align="center">
+        <SceneHeadline size="xl" className="text-center">
+          Your work,
+          <br />
+          <span className="italic">on one page.</span>
+        </SceneHeadline>
+        <SceneSubheading className="mx-auto text-center">
+          Drop in a job. Get your link.
+        </SceneSubheading>
+        <SceneBody className="mx-auto w-full max-w-xl">
+          <HeroJobField />
+        </SceneBody>
+      </Scene>
+
+      <footer className="mx-auto w-full max-w-[1000px] border-t border-[color:var(--paper-line)] px-6 py-10 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--code-comment)] md:px-10">
+        {"// commitly · hook em hacks 2026"}
+      </footer>
+    </PaperSurface>
   );
 }

@@ -14,6 +14,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { PaperSurface } from "@/components/recruiter/paper-surface";
+import {
+  Scene,
+  SceneHeadline,
+  SceneSubheading,
+} from "@/components/scene/scene";
 import { ShareModal } from "@/components/ShareModal";
 import { Button } from "@/components/ui/button";
 import { COMMITLY_GENERATED_SLUG_KEY } from "@/lib/commitly-flow";
@@ -37,12 +43,12 @@ const TOTAL_PROCESSING_MS =
   LAST_AGENT_DONE_MS + DELIBERATION_MS + ALMOST_READY_MS;
 
 const STATUS_MESSAGES = [
-  "Reading the job posting...",
-  "Scanning your commits...",
-  "Measuring technical complexity...",
-  "Verifying authenticity...",
-  "Matching your code to the role...",
-  "Writing your summary...",
+  "reading the job posting...",
+  "scanning your commits...",
+  "measuring technical complexity...",
+  "verifying authenticity...",
+  "matching your code to the role...",
+  "writing your summary...",
 ] as const;
 
 type AgentStatus = "idle" | "working" | "done";
@@ -50,38 +56,38 @@ type AgentStatus = "idle" | "working" | "done";
 const AGENTS = [
   {
     key: "skills",
-    name: "Skills agent",
-    description: "Extracting signals from the job posting",
+    name: "skills_agent",
+    description: "extracting signals from the job posting",
     Icon: ClipboardList,
   },
   {
     key: "commit",
-    name: "Commit agent",
-    description: "Scanning your commits and diffs",
+    name: "commit_agent",
+    description: "scanning your commits and diffs",
     Icon: GitCommitHorizontal,
   },
   {
     key: "complexity",
-    name: "Complexity agent",
-    description: "Measuring technical complexity",
+    name: "complexity_agent",
+    description: "measuring technical complexity",
     Icon: Layers,
   },
   {
     key: "authenticity",
-    name: "Authenticity agent",
-    description: "Verifying you wrote the code",
+    name: "authenticity_agent",
+    description: "verifying you wrote the code",
     Icon: ShieldCheck,
   },
   {
     key: "matching",
-    name: "Matching agent",
-    description: "Mapping code to required skills",
+    name: "matching_agent",
+    description: "mapping code to required skills",
     Icon: Link2,
   },
   {
     key: "summary",
-    name: "Summary agent",
-    description: "Writing your technical summary",
+    name: "summary_agent",
+    description: "writing your technical summary",
     Icon: FilePenLine,
   },
 ] as const;
@@ -98,14 +104,14 @@ function statusMessage(elapsed: number): string {
   if (elapsed < LAST_AGENT_DONE_MS) {
     const idx = Math.min(
       STATUS_MESSAGES.length - 1,
-      Math.floor(elapsed / STAGGER_MS)
+      Math.floor(elapsed / STAGGER_MS),
     );
     return STATUS_MESSAGES[idx]!;
   }
   if (elapsed < LAST_AGENT_DONE_MS + DELIBERATION_MS) {
-    return "Agents are deliberating...";
+    return "agents are deliberating...";
   }
-  return "Almost ready...";
+  return "almost ready...";
 }
 
 export default function GeneratingPage() {
@@ -115,7 +121,7 @@ export default function GeneratingPage() {
   const [toast, setToast] = React.useState(false);
   const [shareOpen, setShareOpen] = React.useState(false);
   const navigateTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
 
   React.useEffect(() => {
@@ -186,156 +192,166 @@ export default function GeneratingPage() {
     : Math.min(100, (elapsed / TOTAL_PROCESSING_MS) * 100);
 
   return (
-    <div className="relative min-h-screen bg-background px-6 py-16 md:py-24">
-      <div className="mx-auto flex max-w-4xl flex-col items-center">
-        <header className="mb-14 max-w-xl text-center md:mb-20">
-          <p className="mb-4 text-xs font-medium uppercase tracking-[0.22em] text-primary">
-            Agents at work
-          </p>
-          <h1 className="font-serif text-3xl font-normal tracking-tight text-foreground sm:text-4xl md:text-[2.75rem] md:leading-tight">
-            Six agents are reading your code.
-          </h1>
-          <p className="mt-5 text-base leading-relaxed text-[color:var(--text-secondary)] md:text-[1.05rem]">
-            Each one evaluates a different dimension. They&apos;ll deliberate
-            and produce your technical summary.
-          </p>
-        </header>
+    <PaperSurface>
+      <AnimatePresence mode="wait">
+        {!success ? (
+          <Scene eyebrow="step 03 · agents at work" key="processing">
+            <SceneHeadline as="h1" size="lg">
+              Six agents
+              <br />
+              <span className="italic text-[color:var(--ink-muted)]">
+                reading your code.
+              </span>
+            </SceneHeadline>
+            <SceneSubheading>
+              Each one evaluates a different dimension. They deliberate and
+              produce your technical summary.
+            </SceneSubheading>
 
-        <AnimatePresence mode="wait">
-          {!success ? (
             <motion.div
-              key="processing"
-              className="w-full"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25, ease: [0.22, 0.8, 0.26, 1] }}
+              className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
             >
-              <div className="mx-auto grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {AGENTS.map((agent, index) => {
-                  const phase = agentPhase(elapsed, index);
-                  const Icon = agent.Icon;
-                  return (
-                    <motion.div
-                      key={agent.key}
-                      layout
-                      className={cn(
-                        "rounded-xl border border-border bg-card p-5 shadow-card transition-shadow duration-300",
-                        phase === "working" && "border-primary/25 shadow-md"
-                      )}
-                      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={cn(
-                            "flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-primary",
-                            phase === "idle" && "opacity-50"
-                          )}
-                        >
-                          <Icon className="size-4" strokeWidth={1.75} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <h2 className="font-sans text-sm font-semibold leading-snug text-foreground">
-                              {agent.name}
-                            </h2>
-                            <StatusIndicator phase={phase} />
-                          </div>
-                          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                            {agent.description}
-                          </p>
-                        </div>
+              {AGENTS.map((agent, index) => {
+                const phase = agentPhase(elapsed, index);
+                const Icon = agent.Icon;
+                return (
+                  <motion.div
+                    key={agent.key}
+                    layout
+                    className={cn(
+                      "rounded-[10px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)] p-5 transition-all duration-300",
+                      phase === "working" &&
+                        "border-[color:var(--code-fn)]/40 shadow-[0_2px_10px_rgba(37,99,235,0.08)]",
+                      phase === "idle" && "opacity-60",
+                    )}
+                    transition={{ duration: 0.28, ease: [0.22, 0.8, 0.26, 1] }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-[6px] border border-[color:var(--paper-line-soft)] bg-[color:var(--paper-bg)] text-[color:var(--code-fn)]",
+                          phase === "idle" && "opacity-60",
+                        )}
+                      >
+                        <Icon className="size-4" strokeWidth={1.75} />
                       </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-
-              <p className="mt-12 text-center">
-                <Link
-                  href="/how-it-works"
-                  className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
-                >
-                  How our agents work →
-                </Link>
-              </p>
-
-              <div className="mt-14 flex flex-col items-center md:mt-16">
-                <p
-                  className="text-center text-sm text-[color:var(--text-secondary)]"
-                  aria-live="polite"
-                >
-                  {statusMessage(elapsed)}
-                </p>
-                <div className="mt-5 h-1 w-full max-w-[320px] overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-[width] duration-100 ease-linear"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
-              </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h2
+                            className="font-mono text-[12px] font-medium tracking-tight"
+                            style={{ color: "var(--code-fn)" }}
+                          >
+                            {agent.name}
+                          </h2>
+                          <StatusIndicator phase={phase} />
+                        </div>
+                        <p className="mt-2 text-[12px] leading-[1.55] text-[color:var(--ink-muted)]">
+                          {agent.description}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </motion.div>
-          ) : (
+
+            <div className="mt-12 flex flex-col items-center gap-5">
+              <p
+                className="font-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--code-comment)]"
+                aria-live="polite"
+              >
+                {"// "}
+                {statusMessage(elapsed)}
+              </p>
+              <div className="h-[3px] w-full max-w-[320px] overflow-hidden rounded-full bg-[color:var(--paper-line)]">
+                <div
+                  className="h-full rounded-full bg-[color:var(--ink)] transition-[width] duration-100 ease-linear"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <Link
+                href="/how-it-works"
+                className="font-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--code-comment)] underline-offset-4 transition-colors hover:text-[color:var(--ink)] hover:underline"
+              >
+                how our agents work →
+              </Link>
+            </div>
+          </Scene>
+        ) : (
+          <Scene eyebrow="ready" align="center" key="success">
             <motion.div
-              key="success"
-              className="flex w-full max-w-lg flex-col items-center text-center"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.45, ease: [0.22, 0.8, 0.26, 1] }}
+              className="mx-auto mb-6 flex size-14 items-center justify-center rounded-full border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)] text-[color:var(--code-string)]"
+            >
+              <Check className="size-7" strokeWidth={2} aria-hidden />
+            </motion.div>
+            <SceneHeadline as="h1" size="lg" className="text-center">
+              Your link
+              <br />
+              <span className="italic">is ready.</span>
+            </SceneHeadline>
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.2, ease: [0.22, 0.8, 0.26, 1] }}
+              className="mt-8 break-all font-mono text-[18px] text-[color:var(--ink)] md:text-[22px]"
+            >
+              {DISPLAY_URL}
+            </motion.p>
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.45, delay: 0.3, ease: [0.22, 0.8, 0.26, 1] }}
+              className="mt-10 flex w-full max-w-lg flex-col items-stretch gap-3"
             >
-              <div className="mb-6 flex size-12 items-center justify-center rounded-full border border-primary/20 bg-primary/5 text-primary">
-                <Check className="size-6" strokeWidth={2} aria-hidden />
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="h-11 w-full rounded-[8px] bg-[color:var(--ink)] px-8 text-[15px] font-medium text-[color:var(--paper-bg)] hover:bg-[color:var(--ink-soft)] sm:w-auto sm:min-w-[10rem]"
+                  onClick={handleCopy}
+                >
+                  Copy link
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-11 w-full rounded-[8px] border-[color:var(--paper-line)] bg-transparent px-8 text-[15px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--paper-bg-deep)] sm:w-auto sm:min-w-[10rem]"
+                  onClick={() => setShareOpen(true)}
+                >
+                  Share
+                </Button>
               </div>
-              <h2 className="font-serif text-3xl font-normal tracking-tight text-foreground sm:text-4xl">
-                Your link is ready.
-              </h2>
-              <p className="mt-8 break-all font-mono text-lg text-foreground md:text-xl">
-                {DISPLAY_URL}
-              </p>
-              <div className="mt-10 flex w-full max-w-lg flex-col items-stretch gap-4">
-                <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="h-11 w-full rounded-lg px-8 text-base font-medium sm:w-auto sm:min-w-[10rem]"
-                    onClick={handleCopy}
-                  >
-                    Copy link
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="h-11 w-full rounded-lg px-8 text-base font-medium sm:w-auto sm:min-w-[10rem]"
-                    onClick={() => setShareOpen(true)}
-                  >
-                    Share
-                  </Button>
-                </div>
-                <div className="flex w-full flex-col gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="h-11 w-full rounded-lg px-8 text-base font-medium text-foreground sm:min-w-[12rem]"
-                    onClick={handleViewPage}
-                  >
-                    View your page
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="h-11 w-full rounded-lg px-8 text-base font-medium text-foreground sm:min-w-[12rem]"
-                    onClick={handleGoToDashboard}
-                  >
-                    Go to dashboard
-                  </Button>
-                </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-11 w-full rounded-[8px] border-[color:var(--paper-line)] bg-transparent px-8 text-[15px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--paper-bg-deep)] sm:w-auto sm:min-w-[12rem]"
+                  onClick={handleViewPage}
+                >
+                  View your page
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="h-11 w-full rounded-[8px] border-[color:var(--paper-line)] bg-transparent px-8 text-[15px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--paper-bg-deep)] sm:w-auto sm:min-w-[12rem]"
+                  onClick={handleGoToDashboard}
+                >
+                  Go to dashboard
+                </Button>
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </Scene>
+        )}
+      </AnimatePresence>
 
       <ShareModal
         isOpen={shareOpen}
@@ -353,13 +369,13 @@ export default function GeneratingPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.22 }}
-            className="pointer-events-none fixed bottom-8 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-foreground shadow-card"
+            className="pointer-events-none fixed bottom-8 left-1/2 z-50 -translate-x-1/2 rounded-[8px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg)] px-4 py-2.5 font-mono text-[12px] text-[color:var(--ink)] shadow-[0_4px_12px_rgba(0,0,0,0.06)]"
           >
-            Link copied.
+            {"// link copied"}
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </div>
+    </PaperSurface>
   );
 }
 
@@ -367,22 +383,26 @@ function StatusIndicator({ phase }: { phase: AgentStatus }) {
   if (phase === "idle") {
     return (
       <span
-        className="mt-0.5 inline-flex size-2.5 shrink-0 rounded-full bg-muted-foreground/35"
+        className="mt-0.5 inline-flex size-2 shrink-0 rounded-full bg-[color:var(--paper-line)]"
         aria-hidden
       />
     );
   }
   if (phase === "working") {
     return (
-      <span className="relative mt-0.5 inline-flex size-2.5 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/35" />
-        <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+      <span className="relative mt-0.5 inline-flex size-2 shrink-0">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--code-fn)]/40" />
+        <span
+          className="relative inline-flex size-2 rounded-full"
+          style={{ backgroundColor: "var(--code-fn)" }}
+        />
       </span>
     );
   }
   return (
     <Check
-      className="mt-0.5 size-4 shrink-0 text-primary"
+      className="mt-0.5 size-4 shrink-0"
+      style={{ color: "var(--code-string)" }}
       strokeWidth={2.5}
       aria-hidden
     />
