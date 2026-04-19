@@ -215,7 +215,7 @@ function RequirementRow({
           <CommitCarousel commits={commits} color={color} />
         ) : (
           <p className="font-mono text-[11px] text-[color:var(--code-comment)]">
-            // no commits matched yet
+            {"// no commits matched yet"}
           </p>
         )}
       </div>
