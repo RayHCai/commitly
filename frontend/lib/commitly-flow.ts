@@ -7,6 +7,7 @@ export type CommitlyFlowData = {
   jobUrl: string;
   jobDescription: string;
   githubConnected: boolean;
+  sessionId: string;
 };
 
 /** Includes wizard step so refresh restores the correct screen */
@@ -18,6 +19,7 @@ export const defaultCommitlyFlowState = (): CommitlyFlowState => ({
   jobUrl: "",
   jobDescription: "",
   githubConnected: false,
+  sessionId: crypto.randomUUID(),
   step: 1,
 });
 
@@ -29,6 +31,10 @@ export function parseCommitlyFlow(raw: string | null): CommitlyFlowState | null 
     const jobDescription =
       typeof data.jobDescription === "string" ? data.jobDescription : "";
     const githubConnected = Boolean(data.githubConnected);
+    const sessionId =
+      typeof data.sessionId === "string" && data.sessionId
+        ? data.sessionId
+        : crypto.randomUUID();
     let step: 1 | 2 = data.step === 2 ? 2 : 1;
     if (
       step === 2 &&
@@ -41,6 +47,7 @@ export function parseCommitlyFlow(raw: string | null): CommitlyFlowState | null 
       jobUrl,
       jobDescription,
       githubConnected,
+      sessionId,
       step,
     };
   } catch {
@@ -53,6 +60,7 @@ export function serializeCommitlyFlow(state: CommitlyFlowState): string {
     jobUrl: state.jobUrl,
     jobDescription: state.jobDescription,
     githubConnected: state.githubConnected,
+    sessionId: state.sessionId,
     step: state.step,
   };
   return JSON.stringify(payload);

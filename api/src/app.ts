@@ -12,7 +12,7 @@ const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,

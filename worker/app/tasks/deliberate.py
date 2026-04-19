@@ -1,209 +1,263 @@
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from app.services.gemini import generate
-from app.services.pipeline import ingest_document, prepare_commit_text
+from app.services.pipeline import (
+    chunk_text,
+    embed_chunks,
+    prepare_commit_text,
+)
+from app.services.weaviate_client import batch_upsert_commits
 from app.services.solana import send_memo
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
+BATCH_SIZE = 5
+
 # ---------------------------------------------------------------------------
-# Scoring agents — each runs as an independent parallel LLM call
+# Combined scoring prompt — one LLM call returns all three scores + tags
 # ---------------------------------------------------------------------------
 
-_TAGS_INSTRUCTION = (
-    '  "tags": ["<technology/framework/language/method tag>", ...]\n'
+COMBINED_PROMPT = (
+    "You are an expert code-review agent. Evaluate the following commit on "
+    "three independent dimensions and extract technology tags.\n\n"
+    "Return ONLY a valid JSON object with exactly this structure:\n"
+    "{\n"
+    '  "complexity": {\n'
+    '    "score": <float 0.0-1.0>,\n'
+    '    "reasoning": "<brief explanation, max 200 chars>"\n'
+    "  },\n"
+    '  "quality": {\n'
+    '    "score": <float 0.0-1.0>,\n'
+    '    "reasoning": "<brief explanation, max 200 chars>"\n'
+    "  },\n"
+    '  "summary": {\n'
+    '    "score": <float 0.0-1.0>,\n'
+    '    "reasoning": "<brief explanation, max 200 chars>"\n'
+    "  },\n"
+    '  "tags": ["<technology/framework/language tag>", ...]\n'
+    "}\n\n"
+    "Scoring guidelines:\n"
+    "- complexity: lines changed, files touched, algorithmic difficulty, "
+    "cognitive load. 0.0 = trivial, 1.0 = very complex.\n"
+    "- quality: readability, best practices, test coverage signals, "
+    "documentation. 0.0 = very poor, 1.0 = excellent.\n"
+    "- summary: significance, project impact, engineering judgment. "
+    "0.0 = trivial/boilerplate, 1.0 = highly significant.\n\n"
+    "Tag rules:\n"
+    "- tags must be lowercase strings identifying technologies, programming "
+    "languages, frameworks, libraries, tools, design patterns, and methods "
+    'visible in the commit (e.g. "react", "typescript", "docker", '
+    '"rest-api", "unit-testing").\n'
+    "- Include only tags clearly evidenced by the diff. Max 15 tags.\n\n"
+    "Return ONLY the JSON object, no markdown fences, no extra text."
 )
-_TAGS_RULES = (
-    "- tags must be a list of lowercase strings identifying technologies, "
-    "programming languages, frameworks, libraries, tools, design patterns, "
-    "and methods visible in the commit (e.g. \"react\", \"typescript\", "
-    "\"docker\", \"rest-api\", \"unit-testing\"). "
-    "Include only tags clearly evidenced by the diff. Max 15 tags.\n"
-)
-
-AGENTS = [
-    {
-        "name": "quality_agent",
-        "prompt": (
-            "You are a code-quality scoring agent.\n"
-            "Evaluate the following commit for code quality: readability, "
-            "adherence to best practices, test coverage signals, and "
-            "documentation.\n"
-            "Also extract technology tags from the commit.\n\n"
-            "Return ONLY a valid JSON object with exactly these keys:\n"
-            '{\n  "score": <float between 0.0 and 1.0>,\n'
-            '  "reasoning": "<brief explanation>",\n'
-            + _TAGS_INSTRUCTION
-            + "}\n\n"
-            "Rules:\n"
-            "- score must be a float from 0.0 (very poor) to 1.0 (excellent).\n"
-            "- reasoning must be a single string, max 200 characters.\n"
-            + _TAGS_RULES
-            + "- Return ONLY the JSON object, no markdown fences, no extra text."
-        ),
-    },
-    {
-        "name": "complexity_agent",
-        "prompt": (
-            "You are a commit-complexity scoring agent.\n"
-            "Evaluate the following commit for complexity: lines changed, "
-            "number of files touched, algorithmic difficulty, and cognitive "
-            "load required to review.\n"
-            "Also extract technology tags from the commit.\n\n"
-            "Return ONLY a valid JSON object with exactly these keys:\n"
-            '{\n  "score": <float between 0.0 and 1.0>,\n'
-            '  "reasoning": "<brief explanation>",\n'
-            + _TAGS_INSTRUCTION
-            + "}\n\n"
-            "Rules:\n"
-            "- score must be a float from 0.0 (trivial) to 1.0 (very complex).\n"
-            "- reasoning must be a single string, max 200 characters.\n"
-            + _TAGS_RULES
-            + "- Return ONLY the JSON object, no markdown fences, no extra text."
-        ),
-    },
-]
 
 MAX_MEMO_BYTES = 900
 
 
-def _parse_agent_response(raw: str) -> dict:
-    """Parse LLM JSON response into {score, reasoning, tags} with fallback."""
+def _parse_combined_response(raw: str) -> dict:
+    """Parse the combined LLM JSON response into structured scores + tags."""
     try:
         cleaned = raw.strip()
         if cleaned.startswith("```"):
             cleaned = cleaned.split("\n", 1)[1]
             cleaned = cleaned.rsplit("```", 1)[0]
         data = json.loads(cleaned)
-        score = max(0.0, min(1.0, float(data.get("score", 0.0))))
-        reasoning = str(data.get("reasoning", ""))
+
+        result = {}
+        for dimension in ("complexity", "quality", "summary"):
+            section = data.get(dimension, {})
+            score = max(0.0, min(1.0, float(section.get("score", 0.0))))
+            reasoning = str(section.get("reasoning", ""))
+            result[dimension] = {"score": score, "reasoning": reasoning}
+
         raw_tags = data.get("tags", [])
-        tags = [str(t).lower().strip() for t in raw_tags if isinstance(t, str)][:15]
-        return {"score": score, "reasoning": reasoning, "tags": tags}
+        result["tags"] = [str(t).lower().strip() for t in raw_tags if isinstance(t, str)][:15]
+        return result
     except (json.JSONDecodeError, ValueError, IndexError, KeyError) as e:
-        logger.warning(f"Failed to parse agent response: {e}. Raw: {raw[:200]}")
-        return {"score": 0.0, "reasoning": "Parse error: could not extract score", "tags": []}
+        logger.warning(f"Failed to parse combined response: {e}. Raw: {raw[:200]}")
+        fallback = {"score": 0.0, "reasoning": "Parse error: could not extract score"}
+        return {
+            "complexity": fallback.copy(),
+            "quality": fallback.copy(),
+            "summary": fallback.copy(),
+            "tags": [],
+        }
 
 
-def _run_agent(agent: dict, context: str) -> dict:
-    """Run a single scoring agent via the Gemini LLM."""
-    agent_name = agent["name"]
+def _run_combined_scoring(context: str) -> dict:
+    """Run a single combined LLM call that returns all three scores + tags."""
     try:
-        raw_response = generate(agent["prompt"], context)
-        parsed = _parse_agent_response(raw_response)
+        raw_response = generate(COMBINED_PROMPT, context)
+        return _parse_combined_response(raw_response)
     except Exception as e:
-        logger.error(f"Agent {agent_name} LLM call failed: {e}")
-        parsed = {"score": 0.0, "reasoning": f"LLM call failed: {e}", "tags": []}
+        logger.error(f"Combined scoring LLM call failed: {e}")
+        fallback = {"score": 0.0, "reasoning": f"LLM call failed: {e}"}
+        return {
+            "complexity": fallback.copy(),
+            "quality": fallback.copy(),
+            "summary": fallback.copy(),
+            "tags": [],
+        }
 
-    return {
-        "agent_name": agent_name,
-        "score": parsed["score"],
-        "reasoning": parsed["reasoning"],
-        "tags": parsed["tags"],
-    }
 
-
-def _build_memo_payload(agent_result: dict, sha: str, repo_name: str) -> str:
+def _build_memo_payload(agent_name: str, score: float, reasoning: str, sha: str, repo_name: str) -> str:
     """Build compact JSON memo string, truncating reasoning if too large."""
     payload = {
-        "agent": agent_result["agent_name"],
+        "agent": agent_name,
         "sha": sha,
         "repo": repo_name,
-        "score": agent_result["score"],
-        "reasoning": agent_result["reasoning"],
+        "score": score,
+        "reasoning": reasoning,
     }
     encoded = json.dumps(payload, separators=(",", ":"))
 
     if len(encoded.encode("utf-8")) > MAX_MEMO_BYTES:
         overshoot = len(encoded.encode("utf-8")) - MAX_MEMO_BYTES
-        trimmed_len = max(10, len(agent_result["reasoning"]) - overshoot - 3)
-        payload["reasoning"] = agent_result["reasoning"][:trimmed_len] + "..."
+        trimmed_len = max(10, len(reasoning) - overshoot - 3)
+        payload["reasoning"] = reasoning[:trimmed_len] + "..."
         encoded = json.dumps(payload, separators=(",", ":"))
 
     return encoded
+
+
+def _send_memos_background(scores: dict, sha: str, repo_name: str) -> None:
+    """Send Solana memos for all three dimensions in background threads."""
+    def _send_all():
+        agent_names = {
+            "complexity": "complexity_agent",
+            "quality": "quality_agent",
+            "summary": "summary_agent",
+        }
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            for dimension, agent_name in agent_names.items():
+                section = scores[dimension]
+                memo_payload = _build_memo_payload(
+                    agent_name, section["score"], section["reasoning"], sha, repo_name
+                )
+                executor.submit(_send_single_memo, agent_name, memo_payload, sha)
+
+    thread = threading.Thread(target=_send_all, daemon=True)
+    thread.start()
+
+
+def _send_single_memo(agent_name: str, memo_payload: str, sha: str) -> None:
+    """Send a single memo, logging errors without raising."""
+    try:
+        sig = send_memo(memo_payload)
+        logger.info(f"Solana memo sent for {agent_name} on {sha}: {sig}")
+    except Exception as e:
+        logger.error(f"Solana memo failed for {agent_name} on commit {sha}: {e}")
+
+
+def _build_metadata(commit: dict, scores: dict, repo_name: str) -> dict:
+    """Build metadata dict for a single commit."""
+    return {
+        "sha": commit["sha"],
+        "repo_name": repo_name,
+        "message": (
+            commit.get("commit", {}).get("message", "")
+            if isinstance(commit.get("commit"), dict)
+            else commit.get("message", "")
+        ),
+        "diff": commit.get("diff", ""),
+        "author": (
+            commit.get("author", {}).get("login", "")
+            if isinstance(commit.get("author"), dict)
+            else str(commit.get("author") or "")
+        ),
+        "tags": scores["tags"],
+        "quality_score": scores["quality"]["score"],
+        "complexity_score": scores["complexity"]["score"],
+        "summary_score": scores["summary"]["score"],
+        "quality_reasoning": scores["quality"]["reasoning"],
+        "complexity_reasoning": scores["complexity"]["reasoning"],
+        "summary_reasoning": scores["summary"]["reasoning"],
+    }
+
+
+@celery_app.task(bind=True, name="app.tasks.deliberate.deliberate_batch")
+def deliberate_batch(
+    self, user_id: str, repo_name: str, commits: list[dict]
+) -> dict:
+    """Score a batch of commits with parallel LLM calls, then batch embed + store.
+
+    Optimizations over per-commit tasks:
+    - Parallel LLM scoring via ThreadPoolExecutor
+    - Single batch embedding API call for all chunks
+    - Single Weaviate connection for all inserts
+    """
+    contexts = [prepare_commit_text(c) for c in commits]
+
+    # --- Step 1: Parallel LLM scoring ---
+    with ThreadPoolExecutor(max_workers=min(len(commits), BATCH_SIZE)) as executor:
+        score_futures = [
+            executor.submit(_run_combined_scoring, ctx) for ctx in contexts
+        ]
+        all_scores = [f.result() for f in score_futures]
+
+    # --- Step 2: Fire Solana memos in background (non-blocking) ---
+    for commit, scores in zip(commits, all_scores):
+        _send_memos_background(scores, commit["sha"], repo_name)
+
+    # --- Step 3: Batch chunk + embed + store ---
+    all_chunks_data = []
+    all_chunk_texts = []
+
+    for commit, context, scores in zip(commits, contexts, all_scores):
+        metadata = _build_metadata(commit, scores, repo_name)
+        chunks = chunk_text(context)
+        for i, chunk in enumerate(chunks):
+            all_chunk_texts.append(chunk)
+            all_chunks_data.append({
+                **metadata,
+                "user_id": user_id,
+                "chunk_index": i,
+                "chunk_text": chunk,
+            })
+
+    # Single embedding API call for all chunks across all commits
+    vectors = embed_chunks(all_chunk_texts)
+
+    # Single Weaviate connection for all inserts
+    chunks_stored = batch_upsert_commits(all_chunks_data, vectors)
+
+    return {
+        "commits_processed": len(commits),
+        "chunks_stored": chunks_stored,
+        "shas": [c["sha"] for c in commits],
+        "all_tags": [s["tags"] for s in all_scores],
+        "all_scores": [
+            {
+                "sha": c["sha"],
+                "scores": [
+                    {"agent": "complexity_agent", "score": s["complexity"]["score"]},
+                    {"agent": "quality_agent", "score": s["quality"]["score"]},
+                    {"agent": "summary_agent", "score": s["summary"]["score"]},
+                ],
+            }
+            for c, s in zip(commits, all_scores)
+        ],
+    }
 
 
 @celery_app.task(bind=True, name="app.tasks.deliberate.deliberate_commit")
 def deliberate_commit(
     self, user_id: str, repo_name: str, commit: dict
 ) -> dict:
-    """Score a single commit with 2 parallel agents, write memos, then ingest."""
-
-    sha = commit["sha"]
-    context = prepare_commit_text(commit)
-
-    # --- Step 1: Run 2 scoring agents in parallel ---
-    agent_results = []
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = {
-            executor.submit(_run_agent, agent, context): agent["name"]
-            for agent in AGENTS
-        }
-        for future in as_completed(futures):
-            agent_name = futures[future]
-            try:
-                result = future.result()
-                agent_results.append(result)
-            except Exception as e:
-                logger.error(f"Agent {agent_name} unexpected error: {e}")
-                agent_results.append({
-                    "agent_name": agent_name,
-                    "score": 0.0,
-                    "reasoning": f"Unexpected error: {e}",
-                    "tags": [],
-                })
-
-    # --- Step 2: Write each agent result as a Solana devnet memo ---
-    tx_signatures = []
-    for agent_result in agent_results:
-        memo_payload = _build_memo_payload(agent_result, sha, repo_name)
-        try:
-            sig = send_memo(memo_payload)
-            tx_signatures.append({
-                "agent": agent_result["agent_name"],
-                "signature": sig,
-            })
-        except Exception as e:
-            logger.error(
-                f"Solana memo failed for {agent_result['agent_name']} "
-                f"on commit {sha}: {e}"
-            )
-            tx_signatures.append({
-                "agent": agent_result["agent_name"],
-                "signature": None,
-                "error": str(e),
-            })
-
-    # --- Step 3: Combine tags from all agents into a deduplicated set ---
-    combined_tags = sorted({tag for r in agent_results for tag in r["tags"]})
-
-    # --- Step 4: Persist to vector store with scores as properties ---
-    scores_by_agent = {r["agent_name"]: r for r in agent_results}
-    metadata = {
-        "sha": sha,
-        "repo_name": repo_name,
-        "message": commit.get("message", ""),
-        "diff": commit.get("diff", ""),
-        "author": commit.get("author", ""),
-        "tags": combined_tags,
-        "quality_score": scores_by_agent.get("quality_agent", {}).get("score", 0.0),
-        "complexity_score": scores_by_agent.get("complexity_agent", {}).get("score", 0.0),
-        "quality_reasoning": scores_by_agent.get("quality_agent", {}).get("reasoning", ""),
-        "complexity_reasoning": scores_by_agent.get("complexity_agent", {}).get("reasoning", ""),
-    }
-    chunks_stored = ingest_document(context, metadata, user_id)
-
+    """Score a single commit. Delegates to deliberate_batch for consistency."""
+    result = deliberate_batch(user_id, repo_name, [commit])
+    # Reshape to match legacy per-commit return format
+    scores = result["all_scores"][0] if result["all_scores"] else {}
+    tags = result["all_tags"][0] if result["all_tags"] else []
     return {
-        "sha": sha,
+        "sha": commit["sha"],
         "repo_name": repo_name,
-        "chunks_stored": chunks_stored,
-        "tags": combined_tags,
-        "scores": [
-            {"agent": r["agent_name"], "score": r["score"]}
-            for r in agent_results
-        ],
-        "transactions": tx_signatures,
+        "chunks_stored": result["chunks_stored"],
+        "tags": tags,
+        "scores": scores.get("scores", []),
     }

@@ -45,3 +45,38 @@ export const markIngested = asyncHandler(
     res.json({ success: true });
   }
 );
+
+export const getMyRepositories = asyncHandler(
+  async (req: Request, res: Response) => {
+    const repos = await repositoryService.getMyRepositories(req.user!.userId);
+    res.json({ success: true, data: repos });
+  }
+);
+
+export const deleteRepositoriesBatch = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "ids must be a non-empty array" });
+    }
+    await repositoryService.deleteRepositories(req.user!.userId, ids);
+    res.json({ success: true });
+  }
+);
+
+export const triggerIngestion = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await repositoryService.triggerIngestion(req.user!.userId);
+    res.json({ success: true, data: result });
+  }
+);
+
+export const getTaskStatus = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { taskId } = req.params;
+    const status = await repositoryService.getTaskStatus(taskId);
+    res.json({ success: true, data: status });
+  }
+);

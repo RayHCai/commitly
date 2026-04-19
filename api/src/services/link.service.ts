@@ -73,6 +73,79 @@ export async function completeLink(linkId: string, data: CompleteLinkInput) {
   });
 }
 
+export async function createGeneralLink(userId: string) {
+  const existing = await prisma.customLink.findUnique({
+    where: { userId_slug: { userId, slug: "general" } },
+  });
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.customLink.create({
+    data: {
+      userId,
+      slug: "general",
+      title: "Best Commits",
+      type: "GENERAL",
+      status: "PENDING",
+      isActive: false,
+    },
+  });
+}
+
+export async function completeGeneralLink(linkId: string) {
+  return prisma.customLink.update({
+    where: { id: linkId },
+    data: {
+      status: "ACTIVE",
+      isActive: true,
+    },
+  });
+}
+
+export async function getUserLinks(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { username: true },
+  });
+
+  const links = await prisma.customLink.findMany({
+    where: { userId, status: "ACTIVE" },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      jobUrl: true,
+      type: true,
+      createdAt: true,
+      _count: { select: { views: true } },
+      views: {
+        select: { viewedAt: true },
+        orderBy: { viewedAt: "desc" },
+        take: 1,
+      },
+    },
+  });
+
+  const username = user?.username ?? "";
+
+  return links.map((link: (typeof links)[number]) => ({
+    id: link.id,
+    slug: link.slug,
+    title: link.title,
+    jobUrl: link.jobUrl,
+    type: link.type,
+    createdAt: link.createdAt.toISOString(),
+    viewCount: link._count.views,
+    lastViewedAt: link.views[0]?.viewedAt?.toISOString() ?? null,
+    publicUrl:
+      link.type === "GENERAL"
+        ? `/${username}`
+        : `/${username}/${link.slug}`,
+  }));
+}
+
 export async function failLink(linkId: string, error: string) {
   return prisma.customLink.update({
     where: { id: linkId },

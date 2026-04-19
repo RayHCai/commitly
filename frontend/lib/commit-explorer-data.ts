@@ -20,7 +20,7 @@ export type ExplorerCommit = {
   repoUrl: string;
 };
 
-const GH = "https://github.com/jihan-kapur";
+const GH = "https://github.com/demo-user";
 
 /** Public GitHub repo URL for a repo name like `iris/web-app`. */
 export function explorerRepoUrl(repoName: string): string {

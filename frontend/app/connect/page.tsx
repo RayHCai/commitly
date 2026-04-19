@@ -12,6 +12,7 @@ import {
   SceneSubheading,
 } from "@/components/scene/scene";
 import { Button } from "@/components/ui/button";
+import { githubOAuthUrl } from "@/lib/api";
 import {
   COMMITLY_FLOW_KEY,
   defaultCommitlyFlowState,
@@ -75,10 +76,7 @@ export default function ConnectPage() {
   }, [hydrated, flow.jobUrl, flow.jobDescription, router]);
 
   function completeAndRoute() {
-    const next: CommitlyFlowState = { ...flow, githubConnected: true };
-    setFlow(next);
-    localStorage.setItem(COMMITLY_FLOW_KEY, serializeCommitlyFlow(next));
-    router.push("/generating");
+    window.location.href = githubOAuthUrl(flow.sessionId);
   }
 
   function handleBack() {

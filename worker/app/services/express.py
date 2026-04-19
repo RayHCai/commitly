@@ -1,3 +1,5 @@
+import asyncio
+
 import httpx
 import logging
 
@@ -61,6 +63,36 @@ async def fetch_commits(
     return all_commits
 
 
+async def fetch_commit_details(
+    user_id: str, repo_name: str, shas: list[str], max_concurrent: int = 10
+) -> list[dict | Exception]:
+    """Fetch full commit details (including file patches) for multiple SHAs concurrently.
+
+    Returns a list parallel to `shas` — each entry is either the detail dict
+    or an Exception if that particular fetch failed.
+    """
+    owner, repo = repo_name.split("/", 1)
+    sem = asyncio.Semaphore(max_concurrent)
+
+    async def _fetch_one(client: httpx.AsyncClient, sha: str) -> dict:
+        async with sem:
+            response = await client.get(
+                f"/github/repos/{owner}/{repo}/commits/{sha}",
+                params={"userId": user_id},
+                headers=SERVICE_HEADERS,
+            )
+            response.raise_for_status()
+            return response.json().get("data", {})
+
+    async with httpx.AsyncClient(
+        base_url=settings.EXPRESS_API_URL, timeout=60.0
+    ) as client:
+        return await asyncio.gather(
+            *[_fetch_one(client, sha) for sha in shas],
+            return_exceptions=True,
+        )
+
+
 async def get_repository(user_id: str, repo_name: str) -> dict | None:
     """Fetch repository metadata (including lastIngestedAt) from Express API."""
     owner, repo = repo_name.split("/", 1)
@@ -110,3 +142,49 @@ async def fetch_shell_links(user_id: str) -> list[dict]:
         response.raise_for_status()
         data = response.json()
         return data.get("data", [])
+
+
+async def create_general_link(user_id: str) -> dict | None:
+    """Create a general profile link via the Express API (idempotent)."""
+    async with httpx.AsyncClient(
+        base_url=settings.EXPRESS_API_URL, timeout=30.0
+    ) as client:
+        response = await client.post(
+            "/links/general",
+            headers={**SERVICE_HEADERS, "Content-Type": "application/json"},
+            params={"userId": user_id},
+        )
+        response.raise_for_status()
+        return response.json().get("data")
+
+
+async def complete_general_link(link_id: str, user_id: str) -> None:
+    """Mark the general link as ACTIVE via the Express API."""
+    async with httpx.AsyncClient(
+        base_url=settings.EXPRESS_API_URL, timeout=30.0
+    ) as client:
+        response = await client.patch(
+            f"/links/general/{link_id}/complete",
+            headers={**SERVICE_HEADERS, "Content-Type": "application/json"},
+            params={"userId": user_id},
+        )
+        response.raise_for_status()
+
+
+async def replace_requirements(
+    link_id: str, user_id: str, requirements: list[dict]
+) -> None:
+    """Replace requirements + matched commits for a link via the Express API."""
+    async with httpx.AsyncClient(
+        base_url=settings.EXPRESS_API_URL, timeout=60.0
+    ) as client:
+        response = await client.put(
+            "/requirements",
+            headers={**SERVICE_HEADERS, "Content-Type": "application/json"},
+            json={
+                "linkId": link_id,
+                "userId": user_id,
+                "requirements": requirements,
+            },
+        )
+        response.raise_for_status()

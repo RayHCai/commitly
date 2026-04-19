@@ -14,3 +14,14 @@ export const viewLink = asyncHandler(
     res.json({ success: true, data: linkData });
   }
 );
+
+export const viewGeneralProfile = asyncHandler(
+  async (req: Request, res: Response) => {
+    const username = req.params.username as string;
+    const profileData = await linkViewService.getGeneralProfileData(username);
+
+    trackView(profileData.linkId, req);
+
+    res.json({ success: true, data: profileData });
+  }
+);

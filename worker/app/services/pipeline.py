@@ -35,8 +35,10 @@ def chunk_text(
 
 
 def embed_chunks(chunks: list[str]) -> list[list[float]]:
-    """Generate embedding vectors for a list of text chunks."""
-    return [gemini.embed_text(chunk) for chunk in chunks]
+    """Generate embedding vectors for a list of text chunks in one batch call."""
+    if not chunks:
+        return []
+    return gemini.embed_texts(chunks)
 
 
 _SKIP_EXTENSIONS = {".md", ".markdown", ".txt", ".text", ".rst"}
@@ -67,8 +69,16 @@ def _strip_deletions(diff: str) -> str:
 
 
 def prepare_commit_text(commit: dict) -> str:
-    """Format a commit dict into a single string for embedding."""
-    message = commit.get("message", "")
+    """Format a commit dict into a single string for embedding.
+
+    Handles both flattened dicts (message/diff at top level) and raw GitHub
+    API responses where message lives at commit["commit"]["message"].
+    """
+    git_commit = commit.get("commit", {})
+    message = (
+        git_commit.get("message", "") if isinstance(git_commit, dict)
+        else commit.get("message", "")
+    )
     diff = _strip_deletions(commit.get("diff", ""))
     return f"{message}\n\n{diff}"
 
@@ -93,13 +103,8 @@ def ingest_document(
 
     vectors = embed_chunks(chunks)
 
-    for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
-        chunk_data = {
-            **metadata,
-            "user_id": user_id,
-            "chunk_index": i,
-            "chunk_text": chunk,
-        }
-        weaviate_client.upsert_commit(chunk_data, vector)
-
-    return len(chunks)
+    chunks_data = [
+        {**metadata, "user_id": user_id, "chunk_index": i, "chunk_text": chunk}
+        for i, chunk in enumerate(chunks)
+    ]
+    return weaviate_client.batch_upsert_commits(chunks_data, vectors)

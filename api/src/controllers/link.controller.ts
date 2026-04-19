@@ -5,6 +5,13 @@ import { env } from "../config/env";
 import * as linkService from "../services/link.service";
 import { prisma } from "../config/prisma";
 
+export const getUserLinks = asyncHandler(
+  async (req: Request, res: Response) => {
+    const links = await linkService.getUserLinks(req.user!.userId);
+    res.json({ success: true, data: links });
+  }
+);
+
 export const getShellLinks = asyncHandler(
   async (req: Request, res: Response) => {
     const links = await linkService.getShellLinks(req.user!.userId);
@@ -31,25 +38,61 @@ export const createLink = asyncHandler(
       jobUrl: url,
     });
 
-    fetchWithRetry(`${env.WORKER_URL}/create`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: req.user!.userId,
-        url,
-        link_id: link.id,
-      }),
-    }).catch((err) => {
+    let taskId: string | null = null;
+    try {
+      const workerRes = await fetchWithRetry(`${env.WORKER_URL}/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: req.user!.userId,
+          url,
+          link_id: link.id,
+        }),
+      });
+      if (workerRes.ok) {
+        const workerData = await workerRes.json() as { task_id?: string };
+        taskId = workerData.task_id ?? null;
+      }
+    } catch (err) {
       console.error("Failed to dispatch to worker after retries:", err);
       linkService.failLink(link.id, "Failed to reach worker service").catch(console.error);
-    });
+    }
 
     res.status(202).json({
       success: true,
       data: {
         id: link.id,
+        taskId,
         status: "PENDING",
         jobUrl: url,
+      },
+    });
+  }
+);
+
+export const createGeneralLink = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    const link = await linkService.createGeneralLink(userId);
+    res.status(201).json({ success: true, data: { id: link.id, status: link.status } });
+  }
+);
+
+export const completeGeneralLink = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = req.params.id as string;
+    const link = await linkService.completeGeneralLink(id);
+
+    const user = await prisma.user.findUnique({
+      where: { id: link.userId },
+      select: { username: true },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        ...link,
+        publicUrl: `${env.FRONTEND_URL}/${user!.username}`,
       },
     });
   }
