@@ -113,6 +113,11 @@ function OnboardContent() {
         method: "POST",
       });
 
+      if (!ingestRes.data.taskId) {
+        toast.error("Failed to start ingestion. Please try again.");
+        setSubmitting(false);
+        return;
+      }
       setTaskId(ingestRes.data.taskId);
       setPhase("ingesting");
     } catch (err: unknown) {

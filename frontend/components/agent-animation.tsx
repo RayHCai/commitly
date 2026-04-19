@@ -225,6 +225,8 @@ export function AgentAnimation({ taskId, onComplete }: AgentAnimationProps) {
     let active = true;
     let timeoutId: ReturnType<typeof setTimeout>;
 
+    if (!taskId || taskId === "null") return;
+
     async function poll() {
       if (!active) return;
       try {
