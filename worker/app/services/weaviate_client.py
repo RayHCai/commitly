@@ -275,7 +275,7 @@ def search_top_commits_batch(
     quality_weight: float = 0.2,
     semantic_weight: float = 0.4,
     candidate_limit: int = 30,
-    distance_threshold: float = 0.35,
+    distance_threshold: float = 0.55,
 ) -> list[list[dict]]:
     """Search for top commits for multiple queries using a single connection.
 

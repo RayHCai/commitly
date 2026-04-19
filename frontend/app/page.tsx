@@ -114,7 +114,7 @@ export default function Home() {
             transition={{ duration: 0.5, ease: EASE }}
             className="mb-3 font-mono text-[13px] uppercase tracking-[0.16em] text-[color:var(--code-comment)]"
           >
-            // commitly
+            {"// commitly"}
           </motion.p>
 
           <TypewriterHeadline />
