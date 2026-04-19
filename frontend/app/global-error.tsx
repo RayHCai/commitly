@@ -21,8 +21,8 @@ export default function GlobalError({
           padding: 24,
           fontFamily:
             'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-          background: "#fafaf7",
-          color: "#1a1a17",
+          background: "#ffffff",
+          color: "#1f2328",
         }}
       >
         <div style={{ maxWidth: 420, textAlign: "center" }}>
@@ -31,7 +31,7 @@ export default function GlobalError({
               fontSize: 11,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
-              color: "#8a8a82",
+              color: "#656d76",
               margin: "0 0 16px",
             }}
           >
@@ -48,7 +48,7 @@ export default function GlobalError({
           >
             Something went wrong.
           </h1>
-          <p style={{ fontSize: 16, lineHeight: 1.6, color: "#5c5c55", margin: 0 }}>
+          <p style={{ fontSize: 16, lineHeight: 1.6, color: "#656d76", margin: 0 }}>
             Reload the page or go back home.
           </p>
           <div
@@ -66,9 +66,9 @@ export default function GlobalError({
               style={{
                 padding: "12px 20px",
                 borderRadius: 8,
-                border: "1px solid #d4d4cf",
+                border: "1px solid #d0d7de",
                 background: "#ffffff",
-                color: "#1a1a17",
+                color: "#1f2328",
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: "pointer",
@@ -82,7 +82,7 @@ export default function GlobalError({
                 padding: "12px 20px",
                 borderRadius: 8,
                 border: "none",
-                background: "#1f3a2e",
+                background: "#0969da",
                 color: "#ffffff",
                 fontSize: 14,
                 fontWeight: 500,

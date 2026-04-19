@@ -43,7 +43,23 @@ export async function handleGithubCallback(
   const octokit = new Octokit({ auth: tokenData.access_token });
   const { data: githubUser } = await octokit.rest.users.getAuthenticated();
 
-  // Step 3: Upsert user in database
+  // Step 3: Check if user already exists, then upsert
+  const existingUser = await prisma.user.findUnique({
+    where: { githubId: githubUser.id },
+    select: { id: true },
+  });
+  const isNewUser = !existingUser;
+
+  // Check if the user has completed onboarding (has at least one ingested repo)
+  let onboardingComplete = false;
+  if (existingUser) {
+    const ingestedRepo = await prisma.repository.findFirst({
+      where: { userId: existingUser.id, lastIngestedAt: { not: null } },
+      select: { id: true },
+    });
+    onboardingComplete = !!ingestedRepo;
+  }
+
   const user = await prisma.user.upsert({
     where: { githubId: githubUser.id },
     update: {
@@ -86,5 +102,5 @@ export async function handleGithubCallback(
     { expiresIn: env.JWT_EXPIRES_IN as any }
   );
 
-  return { jwt: jwtToken, user };
+  return { jwt: jwtToken, user, isNewUser, onboardingComplete };
 }

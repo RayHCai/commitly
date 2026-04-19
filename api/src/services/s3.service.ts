@@ -1,7 +1,16 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3Client } from "../config/s3";
 import { env } from "../config/env";
+
+export async function generatePresignedDownloadUrl(s3Key: string): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: env.S3_BUCKET_NAME,
+    Key: s3Key,
+    ResponseContentDisposition: "attachment",
+  });
+  return getSignedUrl(s3Client, command, { expiresIn: 3600 });
+}
 
 export async function generatePresignedUploadUrl(
   userId: string,
@@ -20,4 +29,17 @@ export async function generatePresignedUploadUrl(
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
 
   return { uploadUrl, s3Key };
+}
+
+export async function getS3Object(s3Key: string) {
+  const command = new GetObjectCommand({
+    Bucket: env.S3_BUCKET_NAME,
+    Key: s3Key,
+  });
+  const response = await s3Client.send(command);
+  return {
+    body: response.Body,
+    contentType: response.ContentType ?? "application/octet-stream",
+    contentLength: response.ContentLength,
+  };
 }

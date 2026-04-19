@@ -10,10 +10,10 @@ class Settings(BaseSettings):
     SERVICE_TOKEN: str = ""
     SOLANA_PRIVATE_KEY: str = ""
 
-    EMBEDDING_MODEL: str = "text-embedding-004"
+    EMBEDDING_MODEL: str = "gemini-embedding-001"
     GENERATION_MODEL: str = "gemini-2.5-flash"
 
-    MAX_TOKENS_PER_REPO: int = 1_000_000
+    MAX_TOKENS_PER_REPO: int = 500_000
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

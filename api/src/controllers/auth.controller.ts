@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
-import { fetchWithRetry } from "../utils/fetchWithRetry";
 import { env } from "../config/env";
 import { prisma } from "../config/prisma";
 import * as authService from "../services/auth.service";
@@ -67,19 +66,22 @@ export const githubCallback = asyncHandler(
     const sessionId =
       state && typeof state === "string" ? state : undefined;
 
-    const { jwt, user } = await authService.handleGithubCallback(
-      code,
-      sessionId
-    );
+    const { jwt, user, isNewUser, onboardingComplete } =
+      await authService.handleGithubCallback(code, sessionId);
 
     const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
     redirectUrl.searchParams.set("token", jwt);
     if (sessionId) {
       redirectUrl.searchParams.set("jobLinked", "true");
     }
+    redirectUrl.searchParams.set("isNewUser", String(isNewUser));
+    redirectUrl.searchParams.set(
+      "onboardingComplete",
+      String(onboardingComplete)
+    );
     res.redirect(redirectUrl.toString());
 
-    // Fire-and-forget with retry: fetch user repos, upsert in DB, and trigger worker ingestion
+    // Fire-and-forget: fetch user repos and upsert in DB (no ingestion — deferred to onboard)
     githubService
       .getUserRepos(user.id)
       .then(async (repos) => {
@@ -109,17 +111,9 @@ export const githubCallback = asyncHandler(
             })
           )
         );
-
-        const repoNames = repos.map((r: any) => r.full_name);
-        return fetchWithRetry(`${env.WORKER_URL}/ingest`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: user.id,
-            repo_names: repoNames,
-          }),
-        });
       })
-      .catch((err) => console.error("Failed to trigger ingest after retries:", err));
+      .catch((err) =>
+        console.error("Failed to sync repos:", err)
+      );
   }
 );

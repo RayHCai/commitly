@@ -1,85 +1,268 @@
 "use client";
 
 import * as React from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { apiFetch } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
-import { DashboardLinksSection } from "@/components/dashboard-links-section";
-import { DashboardOverview } from "@/components/dashboard-overview";
-import { DashboardSkeleton } from "@/components/dashboard-skeleton";
-import {
-  DASHBOARD_SECTION_LABEL,
-  DASHBOARD_SECTION_SUBTEXT,
-  DASHBOARD_SECTION_TITLE,
-} from "@/lib/dashboard-section-styles";
-import { mockSkillScores, reposSupportingSkill } from "@/lib/mockData";
+interface LinkItem {
+  id: string;
+  slug: string;
+  title: string | null;
+  jobUrl: string | null;
+  type: string;
+  createdAt: string;
+  viewCount: number;
+  lastViewedAt: string | null;
+}
 
-export default function DashboardPage() {
-  const [showContent, setShowContent] = React.useState(false);
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatRelative(iso: string): string {
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diff = now - then;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return formatDate(iso);
+}
+
+function displayUrl(slug: string, username: string, type: string): string {
+  if (type === "GENERAL") return `commitly.io/${username}`;
+  return `commitly.io/${username}/${slug}`;
+}
+
+function NewLinkModal({
+  link,
+  username,
+  onClose,
+}: {
+  link: LinkItem;
+  username: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = React.useState(false);
+  const url = displayUrl(link.slug, username, link.type);
+  const fullUrl = `https://${url}`;
+  const href = link.type === "GENERAL" ? `/${username}` : `/${username}/${link.slug}`;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-md px-6">
+        <div className="rounded-xl border border-[var(--paper-line)] bg-background p-6 shadow-lg">
+          <p className="font-serif text-2xl tracking-tight text-[color:var(--ink)]">
+            Link ready.
+          </p>
+          {link.title && (
+            <p className="mt-1 font-mono text-[12px] text-[color:var(--code-comment)]">
+              {link.title}
+            </p>
+          )}
+
+          <div className="relative mt-5 flex items-center">
+            <input
+              readOnly
+              value={url}
+              className="h-10 w-full rounded-md border border-[var(--paper-line)] bg-[var(--surface)] px-3 pr-16 font-mono text-[12px] text-[color:var(--ink)] outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={cn(
+                "absolute right-3 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors",
+                copied
+                  ? "text-[color:var(--code-string)]"
+                  : "text-[color:var(--code-comment)] hover:text-[color:var(--ink)]",
+              )}
+            >
+              {copied ? "copied" : "copy"}
+            </button>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[12px] text-[color:var(--code-comment)] underline-offset-2 transition-colors hover:text-[color:var(--ink)] hover:underline"
+            >
+              view ↗
+            </a>
+            <button
+              type="button"
+              onClick={onClose}
+              className="font-mono text-[12px] text-[color:var(--code-comment)] transition-colors hover:text-[color:var(--ink)]"
+            >
+              close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const newLinkId = searchParams.get("newLinkId");
+
+  const [links, setLinks] = React.useState<LinkItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [username, setUsername] = React.useState("");
+  const [modalLink, setModalLink] = React.useState<LinkItem | null>(null);
 
   React.useEffect(() => {
-    const id = window.setTimeout(() => setShowContent(true), 200);
-    return () => window.clearTimeout(id);
+    try {
+      const token = localStorage.getItem("commitly_token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUsername(payload.username ?? "");
+      }
+    } catch {}
+
+    apiFetch<{ data: LinkItem[] }>("/links")
+      .then((res) => {
+        setLinks(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
   }, []);
 
-  if (!showContent) {
-    return <DashboardSkeleton />;
+  // Once links load, open modal for newly created link and strip the query param
+  React.useEffect(() => {
+    if (loading || !newLinkId) return;
+    const found = links.find((l) => l.id === newLinkId);
+    if (found) {
+      setModalLink(found);
+    }
+    // Remove the query param so a refresh doesn't re-open the modal
+    router.replace("/dashboard", { scroll: false });
+  }, [loading, newLinkId, links, router]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full flex-col pt-6">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="border-b border-[var(--paper-line-soft)] px-2 py-4">
+            <div className="h-[18px] w-52 animate-pulse rounded-sm bg-[var(--paper-bg)]" />
+            <div className="mt-2.5 h-3 w-36 animate-pulse rounded-sm bg-[var(--paper-bg)]" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="font-mono text-[13px] text-[color:var(--code-comment)]">
+          {error}
+        </p>
+      </div>
+    );
+  }
+
+  if (links.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3">
+        <p className="font-serif text-2xl tracking-tight text-[color:var(--ink)]">
+          No links yet.
+        </p>
+        <p className="font-mono text-[13px] text-[color:var(--code-comment)]">
+          Click + to create one.
+        </p>
+      </div>
+    );
   }
 
   return (
     <>
-      <DashboardOverview />
-
-      <div className="mt-24 space-y-24">
-        <DashboardLinksSection />
-
-        {/* Skills ↔ repos */}
-        <section>
-          <p className={DASHBOARD_SECTION_LABEL}>SKILLS &amp; PROJECTS</p>
-          <h2 className={DASHBOARD_SECTION_TITLE}>Where each skill shows up.</h2>
-          <p className={DASHBOARD_SECTION_SUBTEXT}>
-            Repos with the strongest signal for skills your postings asked for—no
-            numeric scores, just the work that maps to the role.
-          </p>
-
-          <div className="mt-10 rounded-[12px] border border-border bg-card px-5 py-2 shadow-card md:px-8">
-            {mockSkillScores.map((skill) => {
-              const repos = reposSupportingSkill(skill.name);
-              return (
-                <div
-                  key={skill.name}
-                  className="border-b border-border py-6 last:border-0"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
-                    <div className="min-w-[10rem]">
-                      <p className="text-sm font-semibold text-foreground">
-                        {skill.name}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {skill.supportingCommits} commits analyzed
-                      </p>
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-                      {repos.length > 0 ? (
-                        repos.map((repo) => (
-                          <span
-                            key={repo}
-                            className="inline-flex rounded-full border border-border bg-muted/40 px-2.5 py-1 font-mono text-xs text-foreground"
-                          >
-                            {repo}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          No indexed commits for this skill yet.
-                        </span>
-                      )}
-                    </div>
-                  </div>
+      <div className="flex h-full flex-col pt-4">
+        <div className="flex-1 overflow-y-auto">
+          {links.map((link) => (
+            <div
+              key={link.id}
+              className="border-b border-[var(--paper-line-soft)] px-2 py-4 transition-colors hover:bg-[var(--surface-subtle)]"
+            >
+              <div className="flex items-start justify-between gap-6">
+                <div className="min-w-0 flex-1">
+                  <p className="font-serif text-[17px] leading-snug tracking-tight text-[color:var(--ink)]">
+                    {link.title ?? link.slug}
+                  </p>
+                  <p className="mt-1.5 font-mono text-[12px] leading-relaxed text-[color:var(--code-comment)]">
+                    {formatDate(link.createdAt)}
+                    {"  ·  "}
+                    <a
+                      href={link.type === "GENERAL" ? `/${username}` : `/${username}/${link.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[color:var(--code-comment)] underline-offset-2 transition-colors hover:text-[color:var(--ink)] hover:underline"
+                    >
+                      {displayUrl(link.slug, username, link.type)}
+                    </a>
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        </section>
+                <div className="flex shrink-0 items-baseline gap-6 pt-0.5 font-mono text-[12px] text-[color:var(--code-comment)]">
+                  <span className="tabular-nums">
+                    {link.viewCount} {link.viewCount === 1 ? "view" : "views"}
+                  </span>
+                  <span className="w-[4.5rem] text-right tabular-nums">
+                    {link.lastViewedAt
+                      ? formatRelative(link.lastViewedAt)
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {modalLink && (
+        <NewLinkModal
+          link={modalLink}
+          username={username}
+          onClose={() => setModalLink(null)}
+        />
+      )}
     </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <React.Suspense>
+      <DashboardContent />
+    </React.Suspense>
   );
 }

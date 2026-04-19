@@ -1,15 +1,26 @@
+import asyncio
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
 from app.config import settings
 from app.services import gemini, scraper
 from app.services.scraper import ScrapeError
-from app.services.weaviate_client import search_top_commits
+from app.services import express
+from app.services.weaviate_client import search_top_commits_batch, fetch_top_complex_commits
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+
+COMMIT_SUMMARY_PROMPT = """Write exactly ONE sentence (max 25 words) explaining what this commit demonstrates that is relevant to the job requirement.
+Start with a strong action verb (e.g. "Built", "Implemented", "Optimized", "Designed").
+Return ONLY the sentence — no quotes, no extra text."""
+
+GENERAL_COMMIT_SUMMARY_PROMPT = """Write exactly ONE sentence (max 25 words) describing what this commit accomplished technically.
+Start with a strong action verb (e.g. "Built", "Implemented", "Optimized", "Designed").
+Return ONLY the sentence — no quotes, no extra text."""
 
 EXTRACT_JOB_PROMPT = """You are extracting structured data from a job posting.
 
@@ -20,8 +31,8 @@ Return ONLY a valid JSON object with these exact keys:
   "position_id": "<position/requisition ID if mentioned, otherwise null>",
   "requirements": [
     {
-      "keyword": "<1-3 word label for the requirement>",
-      "description": "<single sentence LLM description of what this requirement entails>"
+      "keyword": "<specific technology or framework name>",
+      "description": "<single sentence describing how the posting expects this technology to be used>"
     }
   ]
 }
@@ -31,11 +42,27 @@ Rules:
 - For company: use the official company name as it appears in the posting.
 - For job_title: use the exact title from the posting (e.g. "Senior Backend Engineer").
 - For position_id: extract any requisition/job ID if present, otherwise use null.
-- For requirements: extract EVERY distinct requirement from the posting (both required and nice-to-have).
-  - keyword must be 1-3 words that concisely name the skill or requirement (e.g. "React", "System Design", "CI/CD Pipelines").
-  - description must be a single sentence explaining what the posting expects for that requirement.
-  - Include technical skills, soft skills, experience level requirements, and domain knowledge.
-  - Order from most important to least important."""
+- For requirements: extract ONLY concrete technologies and frameworks — things a developer installs, imports, or configures.
+
+INCLUDE (specific, nameable technologies):
+  - Programming languages: Python, TypeScript, Go, Rust, Java, C++
+  - Frameworks & libraries: React, Next.js, FastAPI, Django, Spring Boot, GraphQL
+  - Databases & data stores: PostgreSQL, MySQL, Redis, MongoDB, Elasticsearch, DynamoDB
+  - Cloud platforms & services: AWS, GCP, Azure, S3, Lambda, Kubernetes, Docker
+  - Infrastructure & tooling: Terraform, CI/CD, GitHub Actions, Kafka, gRPC, Nginx
+  - ML/data tools: PyTorch, TensorFlow, Spark, dbt, Airflow
+
+EXCLUDE (too vague to match against code):
+  - Generic concepts: "software development", "backend development", "distributed systems"
+  - Soft skills: communication, collaboration, problem-solving, leadership
+  - Process/methodology: agile, scrum, code review, SDLC
+  - Experience levels: "5+ years", "senior-level", "strong fundamentals"
+  - Vague domain knowledge: "system design", "architecture", "scalability"
+
+- keyword must be the exact technology/framework name (e.g. "React", "PostgreSQL", "Kubernetes", "PyTorch").
+- description must be a single sentence describing what the posting expects for that specific technology.
+- If a requirement is too vague to name a specific technology, omit it entirely.
+- Order from most important to least important."""
 
 
 def _callback_to_api(link_id: str, user_id: str, payload: dict) -> None:
@@ -143,21 +170,72 @@ def create_matched(self, user_id: str, url: str, link_id: str) -> dict:
         meta={"step": "matching", "total_requirements": len(requirements)},
     )
 
+    # Batch-embed all requirement queries in a single API call
+    query_texts = [
+        f"{req.get('keyword', '')}: {req.get('description', '')}"
+        for req in requirements
+    ]
+    try:
+        query_vectors = gemini.embed_texts(query_texts)
+    except Exception as e:
+        logger.error(f"Batch embedding failed for requirements: {e}")
+        query_vectors = [None] * len(requirements)
+
+    # Batch-search all vectors in a single Weaviate connection
+    valid_indices = [i for i, v in enumerate(query_vectors) if v is not None]
+    valid_vectors = [query_vectors[i] for i in valid_indices]
+
+    try:
+        batch_results = search_top_commits_batch(valid_vectors, user_id, top_k=3)
+    except Exception as e:
+        logger.error(f"Batch search failed: {e}")
+        batch_results = [[] for _ in valid_indices]
+
+    # Map batch results back to all requirements
+    search_results: list[list[dict]] = [[] for _ in requirements]
+    for idx, result in zip(valid_indices, batch_results):
+        search_results[idx] = result
+
+    # Step 4b: Generate 1-sentence AI summaries for every matched commit in parallel
+    self.update_state(state="PROGRESS", meta={"step": "summarizing"})
+    company = job_data["company"]
+    job_title_str = job_data["job_title"]
+
+    # Collect all (req_index, commit_index, req, commit) tuples
+    summary_tasks = [
+        (i, j, requirements[i], c)
+        for i, commits in enumerate(search_results)
+        for j, c in enumerate(commits)
+    ]
+
+    def _summarize(task):
+        i, j, req, c = task
+        context = (
+            f"Job: {job_title_str} at {company}\n"
+            f"Requirement: {req.get('keyword', '')} — {req.get('description', '')}\n"
+            f"Commit message: {c.get('message', '')}\n"
+            f"Diff:\n{c.get('diff', '')[:2500]}"
+        )
+        try:
+            return (i, j), gemini.generate(COMMIT_SUMMARY_PROMPT, context)
+        except Exception as e:
+            logger.error(f"Failed to generate commit summary ({i},{j}): {e}")
+            return (i, j), ""
+
+    summaries: dict[tuple[int, int], str] = {}
+    if summary_tasks:
+        with ThreadPoolExecutor(max_workers=min(len(summary_tasks), 12)) as executor:
+            for key, summary in executor.map(_summarize, summary_tasks):
+                summaries[key] = summary
+
     matched_requirements = []
     for i, req in enumerate(requirements):
         keyword = req.get("keyword", "")
         description = req.get("description", "")
-        query_text = f"{keyword}: {description}"
-
-        try:
-            query_vector = gemini.embed_text(query_text)
-            top_commits = search_top_commits(query_vector, user_id, top_k=3)
-        except Exception as e:
-            logger.error(f"Search failed for requirement '{keyword}': {e}")
-            top_commits = []
+        top_commits = search_results[i]
 
         formatted_commits = []
-        for c in top_commits:
+        for j, c in enumerate(top_commits):
             commit_url = f"https://github.com/{c['repo_name']}/commit/{c['commit_sha']}"
             formatted_commits.append({
                 "commitSha": c["commit_sha"],
@@ -167,6 +245,7 @@ def create_matched(self, user_id: str, url: str, link_id: str) -> dict:
                 "diff": c.get("diff", ""),
                 "tags": c.get("tags", []),
                 "score": c.get("weighted_score", 0),
+                "summary": summaries.get((i, j), ""),
             })
 
         matched_requirements.append({
@@ -198,4 +277,80 @@ def create_matched(self, user_id: str, url: str, link_id: str) -> dict:
             "position_id": job_data.get("position_id"),
         },
         "requirements_matched": len(matched_requirements),
+    }
+
+
+@celery_app.task(
+    bind=True,
+    name="app.tasks.create.create_general_link",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=120,
+    max_retries=2,
+)
+def create_general_link(self, user_id: str, link_id: str) -> dict:
+    """Fetch top 10 most complex commits and store as a general profile link."""
+
+    self.update_state(state="PROGRESS", meta={"step": "fetching_top_commits"})
+
+    top_commits = fetch_top_complex_commits(user_id, top_k=10)
+
+    if not top_commits:
+        logger.warning(f"No commits found for user {user_id}")
+        return {"user_id": user_id, "link_id": link_id, "error": "No commits found"}
+
+    # Generate 1-sentence summaries for each commit in parallel
+    self.update_state(state="PROGRESS", meta={"step": "summarizing"})
+
+    def _summarize_general(c):
+        context = (
+            f"Commit message: {c.get('message', '')}\n"
+            f"Diff:\n{c.get('diff', '')[:2500]}"
+        )
+        try:
+            return gemini.generate(GENERAL_COMMIT_SUMMARY_PROMPT, context)
+        except Exception as e:
+            logger.error(f"Failed to generate general commit summary: {e}")
+            return ""
+
+    with ThreadPoolExecutor(max_workers=min(len(top_commits), 10)) as executor:
+        summaries = list(executor.map(_summarize_general, top_commits))
+
+    # Format as a single requirement with 10 matched commits
+    formatted_commits = []
+    for c, summary in zip(top_commits, summaries):
+        commit_url = (
+            f"https://github.com/{c['repo_name']}/commit/{c['commit_sha']}"
+        )
+        formatted_commits.append({
+            "commitSha": c["commit_sha"],
+            "repoName": c["repo_name"],
+            "url": commit_url,
+            "message": c.get("message", ""),
+            "diff": c.get("diff", ""),
+            "tags": c.get("tags", []),
+            "score": c.get("complexity_score", 0),
+            "summary": summary,
+        })
+
+    requirement = {
+        "name": "Best Commits",
+        "description": "Most complex commits across all repositories",
+        "matchedCommits": formatted_commits,
+    }
+
+    # Replace requirements + mark link complete in a single event loop
+    async def _finalize_general():
+        await express.replace_requirements(link_id, user_id, [requirement])
+        await express.complete_general_link(link_id, user_id)
+
+    asyncio.run(_finalize_general())
+
+    logger.info(
+        f"General link {link_id} created with {len(formatted_commits)} commits"
+    )
+    return {
+        "user_id": user_id,
+        "link_id": link_id,
+        "commits_matched": len(formatted_commits),
     }

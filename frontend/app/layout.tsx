@@ -6,6 +6,8 @@ import {
 } from "next/font/google";
 import "./globals.css";
 
+import { Toaster } from "sonner";
+
 import { AppShell } from "@/components/app-shell";
 import { siteUrl } from "@/lib/site";
 
@@ -31,8 +33,8 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: siteUrl(),
   title: {
-    default: "Commitly",
-    template: "%s · Commitly",
+    default: "commitly",
+    template: "%s · commitly",
   },
   description:
     "Turn GitHub commits into a recruiter-friendly technical summary for each role.",
@@ -50,6 +52,7 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-background font-sans antialiased">
         <AppShell>{children}</AppShell>
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

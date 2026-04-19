@@ -9,7 +9,15 @@ export const size = {
 
 export const contentType = "image/png";
 
-export default function OgImage() {
+export default function OgImage({
+  params,
+}: {
+  params: { username: string; slug: string };
+}) {
+  const title = params.slug
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
   return new ImageResponse(
     (
       <div
@@ -33,7 +41,7 @@ export default function OgImage() {
             fontFamily: "Georgia, serif",
           }}
         >
-          Commitly
+          {params.username}
         </div>
         <div
           style={{
@@ -46,12 +54,23 @@ export default function OgImage() {
               'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
           }}
         >
-          Verified commits, tailored to the role.
+          {title} — Verified commits, tailored to the role.
+        </div>
+        <div
+          style={{
+            marginTop: 24,
+            fontSize: 18,
+            color: "rgba(255, 255, 255, 0.55)",
+            fontFamily:
+              'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
+          }}
+        >
+          commitly.io/{params.username}/{params.slug}
         </div>
       </div>
     ),
     {
       ...size,
-    }
+    },
   );
 }

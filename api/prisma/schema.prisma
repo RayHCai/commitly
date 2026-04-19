@@ -51,6 +51,11 @@ enum LinkStatus {
   FAILED
 }
 
+enum LinkType {
+  JOB
+  GENERAL
+}
+
 model CustomLink {
   id        String     @id @default(cuid())
   userId    String
@@ -58,6 +63,7 @@ model CustomLink {
   title     String?
   targetUrl String?
   jobUrl    String?
+  type      LinkType   @default(JOB)
   status    LinkStatus @default(PENDING)
   isActive  Boolean    @default(true)
   createdAt DateTime   @default(now())
@@ -96,6 +102,7 @@ model MatchedCommit {
   diff          String   @db.Text
   tags          String[] @default([])
   score         Float
+  summary       String   @default("")
   createdAt     DateTime @default(now())
 
   requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)

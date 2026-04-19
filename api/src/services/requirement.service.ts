@@ -9,6 +9,7 @@ interface MatchedCommitInput {
   diff: string;
   tags: string[];
   score: number;
+  summary?: string;
 }
 
 interface RequirementInput {
@@ -42,6 +43,46 @@ export async function createRequirementsForLink(
               diff: c.diff,
               tags: c.tags,
               score: c.score,
+              summary: c.summary ?? "",
+            })),
+          },
+        },
+        include: { matchedCommits: true },
+      })
+    )
+  );
+
+  return created;
+}
+
+export async function replaceRequirementsForLink(
+  linkId: string,
+  requirements: RequirementInput[]
+) {
+  const link = await prisma.customLink.findUnique({ where: { id: linkId } });
+  if (!link) {
+    throw new ApiError(404, "Link not found");
+  }
+
+  await prisma.requirement.deleteMany({ where: { customLinkId: linkId } });
+
+  const created = await prisma.$transaction(
+    requirements.map((req) =>
+      prisma.requirement.create({
+        data: {
+          customLinkId: linkId,
+          name: req.name,
+          description: req.description,
+          matchedCommits: {
+            create: req.matchedCommits.map((c) => ({
+              commitSha: c.commitSha,
+              repoName: c.repoName,
+              url: c.url,
+              message: c.message,
+              diff: c.diff,
+              tags: c.tags,
+              score: c.score,
+              summary: c.summary ?? "",
             })),
           },
         },
