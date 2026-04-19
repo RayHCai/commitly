@@ -75,7 +75,10 @@ export async function triggerIngestion(userId: string) {
     }),
   });
 
-  const data = (await response.json()) as { task_id?: string };
+  const rawBody = await response.text();
+  console.log(`[ingest] worker status=${response.status} body=${rawBody}`);
+  let data: { task_id?: string } = {};
+  try { data = JSON.parse(rawBody); } catch {}
   return { queued: repoNames.length, taskId: data.task_id ?? null };
 }
 
