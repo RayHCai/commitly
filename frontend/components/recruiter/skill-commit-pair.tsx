@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { RecruiterTopSkill } from "@/lib/mockData";
@@ -43,6 +43,10 @@ export function SkillCommitPair({
   const next = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCommitIndex((i) => (i + 1) % total);
+  };
+  const prev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCommitIndex((i) => (i - 1 + total) % total);
   };
   const goTo = (i: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -108,211 +112,240 @@ export function SkillCommitPair({
       </div>
     ) : null;
 
-  const cardInner = (
+  const renderCard = (
+    c: RecruiterTopSkill["commits"][number],
+    isCenter: boolean,
+  ) => (
     <div
-      className="relative rounded-[6px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)]/60 backdrop-blur-[1px] p-5"
-      style={{ boxShadow: "0 1px 0 rgba(0,0,0,0.02)" }}
+      className="relative h-full rounded-[10px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)]/70 backdrop-blur-[1px] p-5 shadow-[0_1px_0_rgba(0,0,0,0.02)]"
     >
       {/* Project + date strip */}
-          <div
+      <div
+        className={cn(
+          "mb-3 flex items-center justify-between border-b border-[color:var(--paper-line-soft)] pb-2.5",
+          isClean ? "text-[12px]" : "font-mono text-[11px]",
+        )}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {!isClean && (
+            <>
+              <span className="text-[color:var(--code-comment)]">commit</span>
+              <span
+                className="truncate font-medium font-mono"
+                style={{ color: "var(--code-fn)" }}
+              >
+                {c.commitSha}
+              </span>
+              <span className="text-[color:var(--code-comment)]">·</span>
+            </>
+          )}
+          <span
             className={cn(
-              "mb-3 flex items-center justify-between border-b border-[color:var(--paper-line-soft)] pb-2.5",
-              isClean ? "text-[12px]" : "font-mono text-[11px]",
+              "truncate",
+              isClean
+                ? "font-medium text-[color:var(--ink)]"
+                : "text-[color:var(--ink-soft)]",
             )}
           >
-            <div className="flex items-center gap-2 truncate">
-              {!isClean && (
-                <>
-                  <span className="text-[color:var(--code-comment)]">
-                    commit
-                  </span>
-                  <span
-                    className="truncate font-medium font-mono"
-                    style={{ color: "var(--code-fn)" }}
-                  >
-                    {displayed.commitSha}
-                  </span>
-                  <span className="text-[color:var(--code-comment)]">·</span>
-                </>
-              )}
-              <span
-                className={cn(
-                  "truncate",
-                  isClean
-                    ? "font-medium text-[color:var(--ink)]"
-                    : "text-[color:var(--ink-soft)]",
+            {c.projectName}
+          </span>
+        </div>
+        <span className="shrink-0 text-[color:var(--ink-muted)]">{c.date}</span>
+      </div>
+
+      {/* Description */}
+      <p
+        className={cn(
+          isClean
+            ? "font-sans text-[15px] leading-[1.55] text-[color:var(--ink)]"
+            : "font-mono text-[12.5px] leading-[1.55] text-[color:var(--ink)]",
+        )}
+      >
+        {!isClean && (
+          <span style={{ color: "var(--code-comment)" }}>{">"} </span>
+        )}
+        {c.description}
+      </p>
+
+      {/* Stats — full variant, center only */}
+      {isCenter && stats && <div className="mt-3">{stats}</div>}
+
+      {/* Why this matters — reveals on hover, center only */}
+      {isCenter && (
+        <AnimatePresence initial={false}>
+          {(hovered || expanded) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 border-t border-dashed border-[color:var(--paper-line-soft)] pt-3">
+                {isClean ? (
+                  <>
+                    <p className="font-serif text-[12px] italic text-[color:var(--ink-muted)]">
+                      Why this matters
+                    </p>
+                    <p className="mt-1.5 font-sans text-[14px] leading-[1.55] text-[color:var(--ink-soft)]">
+                      {c.whyThisMatters}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--code-comment)]">
+                      {"// why it matters"}
+                    </p>
+                    <p className="mt-1.5 text-[13px] leading-[1.55] text-[color:var(--ink-soft)]">
+                      {c.whyThisMatters}
+                    </p>
+                  </>
                 )}
-              >
-                {displayed.projectName}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+
+      {/* Footer — center card only */}
+      {isCenter && (
+        <div className="mt-4 flex items-center justify-between">
+          <div
+            className="flex items-center gap-1.5"
+            role={canCarousel ? "tablist" : undefined}
+            aria-label={canCarousel ? `Commits for ${skill.name}` : undefined}
+          >
+            {skill.commits.map((cc, i) => {
+              const active = i === commitIndex;
+              if (canCarousel) {
+                return (
+                  <button
+                    key={cc.commitSha}
+                    type="button"
+                    onClick={(e) => goTo(i, e)}
+                    aria-label={`Commit ${i + 1} of ${total}`}
+                    aria-selected={active}
+                    role="tab"
+                    className="group flex size-4 items-center justify-center rounded-full"
+                  >
+                    <span
+                      className="inline-block rounded-full transition-all"
+                      style={{
+                        backgroundColor: accent,
+                        opacity: active ? 1 : 0.3,
+                        width: active ? 18 : 6,
+                        height: 6,
+                      }}
+                    />
+                  </button>
+                );
+              }
+              if (i === 0) return null;
+              return (
+                <span
+                  key={cc.commitSha}
+                  className="inline-block size-[6px] rounded-full"
+                  style={{ backgroundColor: accent, opacity: 0.35 }}
+                  title={`${cc.projectName} · ${cc.date}`}
+                  aria-hidden
+                />
+              );
+            })}
+            {!isClean && total > 1 && (
+              <span className="ml-1 font-mono text-[10px] text-[color:var(--code-comment)]">
+                +{total - 1} more
               </span>
-            </div>
-            <span className="shrink-0 text-[color:var(--ink-muted)]">
-              {displayed.date}
-            </span>
+            )}
           </div>
 
-          {/* Description */}
-          <p
+          <a
+            href={c.commitUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className={cn(
+              "transition-colors",
               isClean
-                ? "font-sans text-[15px] leading-[1.55] text-[color:var(--ink)]"
-                : "font-mono text-[12.5px] leading-[1.55] text-[color:var(--ink)]",
+                ? "text-[12px] text-[color:var(--ink-muted)] underline-offset-4 hover:text-[color:var(--ink)] hover:underline"
+                : "font-mono text-[11px] text-[color:var(--ink-muted)] hover:text-[color:var(--ink)]",
             )}
           >
-            {!isClean && (
-              <span style={{ color: "var(--code-comment)" }}>{">"} </span>
-            )}
-            {displayed.description}
-          </p>
-
-          {/* Stats row — full mode only */}
-          {stats && <div className="mt-3">{stats}</div>}
-
-          {/* Why this matters — reveals on hover */}
-          <AnimatePresence initial={false}>
-            {(hovered || expanded) && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="mt-4 border-t border-dashed border-[color:var(--paper-line-soft)] pt-3">
-                  {isClean ? (
-                    <>
-                      <p className="font-serif text-[12px] italic text-[color:var(--ink-muted)]">
-                        Why this matters
-                      </p>
-                      <p className="mt-1.5 font-sans text-[14px] leading-[1.55] text-[color:var(--ink-soft)]">
-                        {displayed.whyThisMatters}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--code-comment)]">
-                        {"// why it matters"}
-                      </p>
-                      <p className="mt-1.5 text-[13px] leading-[1.55] text-[color:var(--ink-soft)]">
-                        {displayed.whyThisMatters}
-                      </p>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-      {/* Footer: position indicators + github link */}
-      <div className="mt-4 flex items-center justify-between">
-        <div
-          className="flex items-center gap-1.5"
-          role={canCarousel ? "tablist" : undefined}
-          aria-label={canCarousel ? `Commits for ${skill.name}` : undefined}
-        >
-          {skill.commits.map((c, i) => {
-            const active = i === commitIndex;
-            if (canCarousel) {
-              return (
-                <button
-                  key={c.commitSha}
-                  type="button"
-                  onClick={(e) => goTo(i, e)}
-                  aria-label={`Commit ${i + 1} of ${total}`}
-                  aria-selected={active}
-                  role="tab"
-                  className="group flex size-4 items-center justify-center rounded-full"
-                >
-                  <span
-                    className="inline-block rounded-full transition-all"
-                    style={{
-                      backgroundColor: accent,
-                      opacity: active ? 1 : 0.3,
-                      width: active ? 18 : 6,
-                      height: 6,
-                    }}
-                  />
-                </button>
-              );
-            }
-            // non-carousel: keep static dots (skip first; it's the anchor)
-            if (i === 0) return null;
-            return (
-              <span
-                key={c.commitSha}
-                className="inline-block size-[6px] rounded-full"
-                style={{ backgroundColor: accent, opacity: 0.35 }}
-                title={`${c.projectName} · ${c.date}`}
-                aria-hidden
-              />
-            );
-          })}
-          {!isClean && total > 1 && (
-            <span className="ml-1 font-mono text-[10px] text-[color:var(--code-comment)]">
-              +{total - 1} more
-            </span>
-          )}
+            {isClean ? "View on GitHub →" : "view on github →"}
+          </a>
         </div>
-
-        <a
-          href={displayed.commitUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className={cn(
-            "transition-colors",
-            isClean
-              ? "text-[12px] text-[color:var(--ink-muted)] underline-offset-4 hover:text-[color:var(--ink)] hover:underline"
-              : "font-mono text-[11px] text-[color:var(--ink-muted)] hover:text-[color:var(--ink)]",
-          )}
-        >
-          {isClean ? "View on GitHub →" : "view on github →"}
-        </a>
-      </div>
+      )}
     </div>
   );
 
   const commit = canCarousel ? (
-    <div className="flex items-stretch gap-4">
-      <div className="relative flex-1">
-        {/* Back card — deepest layer of the stack */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 translate-x-[10px] translate-y-[10px] rounded-[6px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)]/55"
-        />
-        {/* Middle card */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 translate-x-[5px] translate-y-[5px] rounded-[6px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)]/80"
-        />
-        {/* Front card — smooth right-slide shuffle on change */}
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={displayed.commitSha}
-            initial={{ x: 10, y: 10, opacity: 0, scale: 0.97 }}
-            animate={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-            exit={{ x: 180, opacity: 0 }}
-            transition={{
-              duration: 0.38,
-              ease: [0.22, 0.8, 0.26, 1],
-            }}
-            className="relative"
-          >
-            {cardInner}
-          </motion.div>
-        </AnimatePresence>
+    <div className="relative">
+      {/* Height spacer — invisible copy of center card keeps the container height */}
+      <div className="invisible pointer-events-none" aria-hidden>
+        {renderCard(displayed, true)}
       </div>
+
+      {/* Carousel cards — all positioned absolutely, slot-animated */}
+      {skill.commits.map((c, i) => {
+        const raw = (i - commitIndex + total) % total;
+        const slot = raw > total / 2 ? raw - total : raw;
+        const isCenter = slot === 0;
+        const absSlot = Math.abs(slot);
+        return (
+          <motion.div
+            key={c.commitSha}
+            className="absolute inset-0"
+            initial={false}
+            animate={{
+              x: `${slot * 62}%`,
+              scale: isCenter ? 1 : 0.82,
+              opacity: isCenter ? 1 : absSlot === 1 ? 0.45 : 0,
+              zIndex: isCenter ? 20 : 10 - absSlot,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 240,
+              damping: 30,
+              mass: 0.95,
+            }}
+            style={{
+              transformOrigin: "center",
+              pointerEvents: absSlot <= 1 ? "auto" : "none",
+              cursor: isCenter ? "pointer" : "pointer",
+            }}
+            onClick={
+              isCenter
+                ? undefined
+                : (e) => {
+                    e.stopPropagation();
+                    setCommitIndex(i);
+                  }
+            }
+          >
+            {renderCard(c, isCenter)}
+          </motion.div>
+        );
+      })}
+
+      {/* Arrows — overlay the carousel, clickable on peek cards */}
+      <button
+        type="button"
+        onClick={prev}
+        aria-label={`Previous commit for ${skill.name}`}
+        className="absolute left-2 top-1/2 z-30 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--paper-line)] bg-[color:var(--paper-bg)]/95 text-[color:var(--ink-muted)] backdrop-blur transition-all hover:border-[color:var(--ink-muted)] hover:text-[color:var(--ink)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
+      >
+        <ChevronLeft className="size-[18px]" strokeWidth={1.75} />
+      </button>
       <button
         type="button"
         onClick={next}
         aria-label={`Next commit for ${skill.name}`}
-        className="flex size-11 shrink-0 self-center items-center justify-center rounded-full border border-[color:var(--paper-line)] bg-[color:var(--paper-bg)] text-[color:var(--ink-muted)] transition-all hover:-translate-y-px hover:border-[color:var(--ink-muted)] hover:text-[color:var(--ink)] hover:shadow-[0_2px_10px_rgba(0,0,0,0.06)]"
+        className="absolute right-2 top-1/2 z-30 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--paper-line)] bg-[color:var(--paper-bg)]/95 text-[color:var(--ink-muted)] backdrop-blur transition-all hover:border-[color:var(--ink-muted)] hover:text-[color:var(--ink)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
       >
         <ChevronRight className="size-[18px]" strokeWidth={1.75} />
       </button>
     </div>
   ) : (
-    cardInner
+    renderCard(displayed, true)
   );
 
   if (layout === "stack") {
