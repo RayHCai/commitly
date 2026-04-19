@@ -180,18 +180,8 @@ def deliberate_commit(
     # --- Step 3: Combine tags from all agents into a deduplicated set ---
     combined_tags = sorted({tag for r in agent_results for tag in r["tags"]})
 
-    # --- Step 4: Persist to vector store with scoring context + tags ---
-    scores_text = "\n".join(
-        f"[{r['agent_name']}] score={r['score']:.2f} — {r['reasoning']}"
-        for r in agent_results
-    )
-    tags_text = ", ".join(combined_tags) if combined_tags else "none"
-    enriched_text = (
-        f"{context}\n\n"
-        f"--- Agent Scores ---\n{scores_text}\n\n"
-        f"--- Tags ---\n{tags_text}"
-    )
-
+    # --- Step 4: Persist to vector store with scores as properties ---
+    scores_by_agent = {r["agent_name"]: r for r in agent_results}
     metadata = {
         "sha": sha,
         "repo_name": repo_name,
@@ -199,8 +189,12 @@ def deliberate_commit(
         "diff": commit.get("diff", ""),
         "author": commit.get("author", ""),
         "tags": combined_tags,
+        "quality_score": scores_by_agent.get("quality_agent", {}).get("score", 0.0),
+        "complexity_score": scores_by_agent.get("complexity_agent", {}).get("score", 0.0),
+        "quality_reasoning": scores_by_agent.get("quality_agent", {}).get("reasoning", ""),
+        "complexity_reasoning": scores_by_agent.get("complexity_agent", {}).get("reasoning", ""),
     }
-    chunks_stored = ingest_document(enriched_text, metadata, user_id)
+    chunks_stored = ingest_document(context, metadata, user_id)
 
     return {
         "sha": sha,

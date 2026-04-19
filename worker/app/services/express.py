@@ -103,7 +103,7 @@ async def fetch_shell_links(user_id: str) -> list[dict]:
         base_url=settings.EXPRESS_API_URL, timeout=30.0
     ) as client:
         response = await client.get(
-            "/api/links/shell",
+            "/links/shell",
             headers=SERVICE_HEADERS,
             params={"userId": user_id},
         )
