@@ -84,7 +84,7 @@ export const githubCallback = asyncHandler(
       .getUserRepos(user.id)
       .then(async (repos) => {
         await Promise.all(
-          repos.map((r) =>
+          repos.map((r: any) =>
             prisma.repository.upsert({
               where: {
                 userId_githubRepoId: {
@@ -110,7 +110,7 @@ export const githubCallback = asyncHandler(
           )
         );
 
-        const repoNames = repos.map((r) => r.full_name);
+        const repoNames = repos.map((r: any) => r.full_name);
         return fetchWithRetry(`${env.WORKER_URL}/ingest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

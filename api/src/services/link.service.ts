@@ -12,8 +12,6 @@ interface CompleteLinkInput {
   company: string;
   jobTitle: string;
   positionId: string | null;
-  requirementsSummary: string;
-  niceToHaveSummary: string;
 }
 
 export async function getShellLinks(userId: string) {
