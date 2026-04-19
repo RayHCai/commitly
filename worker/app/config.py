@@ -3,7 +3,8 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     REDIS_URL: str = "redis://redis:6379/0"
-    WEAVIATE_URL: str = "http://weaviate:8080"
+    WEAVIATE_CLOUD_URL: str = ""
+    WEAVIATE_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     EXPRESS_API_URL: str = "http://localhost:3000"
     SERVICE_TOKEN: str = ""

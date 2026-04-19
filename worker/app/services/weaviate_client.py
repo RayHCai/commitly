@@ -2,6 +2,7 @@ import logging
 import uuid as uuid_lib
 
 import weaviate
+from weaviate.auth import AuthApiKey
 from weaviate.classes.config import DataType, Property
 from weaviate.classes.tenants import Tenant, TenantActivityStatus
 from weaviate.exceptions import UnexpectedStatusCodeError
@@ -14,13 +15,9 @@ COLLECTION_NAME = "Commit"
 
 
 def get_client() -> weaviate.WeaviateClient:
-    return weaviate.connect_to_custom(
-        http_host=settings.WEAVIATE_URL.replace("http://", "").split(":")[0],
-        http_port=int(settings.WEAVIATE_URL.split(":")[-1]),
-        http_secure=False,
-        grpc_host=settings.WEAVIATE_URL.replace("http://", "").split(":")[0],
-        grpc_port=50051,
-        grpc_secure=False,
+    return weaviate.connect_to_weaviate_cloud(
+        cluster_url=settings.WEAVIATE_CLOUD_URL,
+        auth_credentials=AuthApiKey(api_key=settings.WEAVIATE_API_KEY),
     )
 
 
@@ -45,6 +42,10 @@ def ensure_collection() -> None:
                     Property(name="chunk_index", data_type=DataType.INT),
                     Property(name="chunk_text", data_type=DataType.TEXT),
                     Property(name="tags", data_type=DataType.TEXT_ARRAY),
+                    Property(name="quality_score", data_type=DataType.NUMBER),
+                    Property(name="complexity_score", data_type=DataType.NUMBER),
+                    Property(name="quality_reasoning", data_type=DataType.TEXT),
+                    Property(name="complexity_reasoning", data_type=DataType.TEXT),
                 ],
             )
     finally:
@@ -93,6 +94,10 @@ def upsert_commit(commit_data: dict, vector: list[float]) -> None:
                     "chunk_index": chunk_index,
                     "chunk_text": commit_data.get("chunk_text", ""),
                     "tags": commit_data.get("tags", []),
+                    "quality_score": commit_data.get("quality_score", 0.0),
+                    "complexity_score": commit_data.get("complexity_score", 0.0),
+                    "quality_reasoning": commit_data.get("quality_reasoning", ""),
+                    "complexity_reasoning": commit_data.get("complexity_reasoning", ""),
                 },
                 vector=vector,
                 uuid=deterministic_uuid,
@@ -123,10 +128,62 @@ def search_similar(
                 "message": obj.properties["message"],
                 "diff": obj.properties["diff"],
                 "author": obj.properties["author"],
+                "chunk_text": obj.properties.get("chunk_text", ""),
                 "tags": obj.properties.get("tags", []),
+                "quality_score": obj.properties.get("quality_score", 0.0),
+                "complexity_score": obj.properties.get("complexity_score", 0.0),
+                "quality_reasoning": obj.properties.get("quality_reasoning", ""),
+                "complexity_reasoning": obj.properties.get("complexity_reasoning", ""),
                 "distance": obj.metadata.distance,
             }
             for obj in results.objects
         ]
     finally:
         client.close()
+
+
+def search_top_commits(
+    query_vector: list[float],
+    user_id: str,
+    top_k: int = 3,
+    complexity_weight: float = 0.65,
+    quality_weight: float = 0.35,
+    candidate_limit: int = 20,
+) -> list[dict]:
+    """Search for the top commits by weighted score (complexity > quality).
+
+    Fetches `candidate_limit` similar chunks, deduplicates by commit SHA,
+    ranks by weighted combination of complexity and quality scores,
+    and returns the top `top_k` unique commits.
+    """
+    candidates = search_similar(query_vector, user_id, limit=candidate_limit)
+
+    # Deduplicate by commit_sha, keeping the closest chunk per commit
+    seen: dict[str, dict] = {}
+    for c in candidates:
+        sha = c["commit_sha"]
+        if sha not in seen or c["distance"] < seen[sha]["distance"]:
+            seen[sha] = c
+
+    # Compute weighted rank from stored scores
+    scored = []
+    for commit in seen.values():
+        quality = commit.get("quality_score", 0.0)
+        complexity = commit.get("complexity_score", 0.0)
+        weighted = complexity_weight * complexity + quality_weight * quality
+        scored.append({
+            "commit_sha": commit["commit_sha"],
+            "repo_name": commit["repo_name"],
+            "message": commit["message"],
+            "diff": commit.get("diff", ""),
+            "author": commit["author"],
+            "tags": commit["tags"],
+            "quality_score": quality,
+            "complexity_score": complexity,
+            "weighted_score": round(weighted, 4),
+            "distance": commit["distance"],
+        })
+
+    # Sort by weighted score descending, break ties with lower distance
+    scored.sort(key=lambda x: (-x["weighted_score"], x["distance"]))
+    return scored[:top_k]

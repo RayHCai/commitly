@@ -37,6 +37,11 @@ def create_collection(client: weaviate.WeaviateClient) -> None:
             Property(name="author", data_type=DataType.TEXT),
             Property(name="chunk_index", data_type=DataType.INT),
             Property(name="chunk_text", data_type=DataType.TEXT),
+            Property(name="tags", data_type=DataType.TEXT_ARRAY),
+            Property(name="quality_score", data_type=DataType.NUMBER),
+            Property(name="complexity_score", data_type=DataType.NUMBER),
+            Property(name="quality_reasoning", data_type=DataType.TEXT),
+            Property(name="complexity_reasoning", data_type=DataType.TEXT),
         ],
     )
 
