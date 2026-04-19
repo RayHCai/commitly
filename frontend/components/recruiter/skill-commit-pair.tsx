@@ -117,7 +117,7 @@ export function SkillCommitPair({
     isCenter: boolean,
   ) => (
     <div
-      className="relative h-full rounded-[10px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)]/70 backdrop-blur-[1px] p-5 shadow-[0_1px_0_rgba(0,0,0,0.02)]"
+      className="relative h-full rounded-[10px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)] p-5 shadow-[0_1px_0_rgba(0,0,0,0.02)]"
     >
       {/* Project + date strip */}
       <div
@@ -279,59 +279,71 @@ export function SkillCommitPair({
 
   const commit = canCarousel ? (
     <div className="relative">
-      {/* Height spacer — invisible copy of center card keeps the container height */}
-      <div className="invisible pointer-events-none" aria-hidden>
-        {renderCard(displayed, true)}
+      {/* Clipped stage — peeks cut off at the column edges */}
+      <div className="relative overflow-hidden">
+        {/* Height spacer — centered, matches the center card width */}
+        <div
+          className="invisible pointer-events-none mx-auto"
+          style={{ width: "68%" }}
+          aria-hidden
+        >
+          {renderCard(displayed, true)}
+        </div>
+
+        {/* Carousel cards — each a fixed-width card, horizontally translated per slot */}
+        {skill.commits.map((c, i) => {
+          const raw = (i - commitIndex + total) % total;
+          const slot = raw > total / 2 ? raw - total : raw;
+          const isCenter = slot === 0;
+          const absSlot = Math.abs(slot);
+          // Each card is 68% of container width, positioned at left:50%.
+          // x = -50% centers it; each slot step adds 80% of its own width.
+          const translateX = -50 + slot * 80;
+          return (
+            <motion.div
+              key={c.commitSha}
+              className="absolute top-0"
+              style={{
+                left: "50%",
+                width: "68%",
+                transformOrigin: "center",
+                pointerEvents: absSlot <= 1 ? "auto" : "none",
+                cursor: "pointer",
+              }}
+              initial={false}
+              animate={{
+                x: `${translateX}%`,
+                scale: isCenter ? 1 : 0.78,
+                opacity: isCenter ? 1 : absSlot === 1 ? 0.5 : 0,
+                zIndex: isCenter ? 20 : 10 - absSlot,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 240,
+                damping: 30,
+                mass: 0.95,
+              }}
+              onClick={
+                isCenter
+                  ? undefined
+                  : (e) => {
+                      e.stopPropagation();
+                      setCommitIndex(i);
+                    }
+              }
+            >
+              {renderCard(c, isCenter)}
+            </motion.div>
+          );
+        })}
       </div>
 
-      {/* Carousel cards — all positioned absolutely, slot-animated */}
-      {skill.commits.map((c, i) => {
-        const raw = (i - commitIndex + total) % total;
-        const slot = raw > total / 2 ? raw - total : raw;
-        const isCenter = slot === 0;
-        const absSlot = Math.abs(slot);
-        return (
-          <motion.div
-            key={c.commitSha}
-            className="absolute inset-0"
-            initial={false}
-            animate={{
-              x: `${slot * 62}%`,
-              scale: isCenter ? 1 : 0.82,
-              opacity: isCenter ? 1 : absSlot === 1 ? 0.45 : 0,
-              zIndex: isCenter ? 20 : 10 - absSlot,
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 240,
-              damping: 30,
-              mass: 0.95,
-            }}
-            style={{
-              transformOrigin: "center",
-              pointerEvents: absSlot <= 1 ? "auto" : "none",
-              cursor: isCenter ? "pointer" : "pointer",
-            }}
-            onClick={
-              isCenter
-                ? undefined
-                : (e) => {
-                    e.stopPropagation();
-                    setCommitIndex(i);
-                  }
-            }
-          >
-            {renderCard(c, isCenter)}
-          </motion.div>
-        );
-      })}
-
-      {/* Arrows — overlay the carousel, clickable on peek cards */}
+      {/* Arrows — sit outside the clipped stage so their shadow isn't cut */}
       <button
         type="button"
         onClick={prev}
         aria-label={`Previous commit for ${skill.name}`}
-        className="absolute left-2 top-1/2 z-30 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--paper-line)] bg-[color:var(--paper-bg)]/95 text-[color:var(--ink-muted)] backdrop-blur transition-all hover:border-[color:var(--ink-muted)] hover:text-[color:var(--ink)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
+        className="absolute left-3 top-1/2 z-30 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--paper-line)] bg-[color:var(--paper-bg)]/95 text-[color:var(--ink-muted)] backdrop-blur transition-all hover:border-[color:var(--ink-muted)] hover:text-[color:var(--ink)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
       >
         <ChevronLeft className="size-[18px]" strokeWidth={1.75} />
       </button>
@@ -339,7 +351,7 @@ export function SkillCommitPair({
         type="button"
         onClick={next}
         aria-label={`Next commit for ${skill.name}`}
-        className="absolute right-2 top-1/2 z-30 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--paper-line)] bg-[color:var(--paper-bg)]/95 text-[color:var(--ink-muted)] backdrop-blur transition-all hover:border-[color:var(--ink-muted)] hover:text-[color:var(--ink)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
+        className="absolute right-3 top-1/2 z-30 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-[color:var(--paper-line)] bg-[color:var(--paper-bg)]/95 text-[color:var(--ink-muted)] backdrop-blur transition-all hover:border-[color:var(--ink-muted)] hover:text-[color:var(--ink)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
       >
         <ChevronRight className="size-[18px]" strokeWidth={1.75} />
       </button>
