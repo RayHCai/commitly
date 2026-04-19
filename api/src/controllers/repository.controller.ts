@@ -75,7 +75,7 @@ export const triggerIngestion = asyncHandler(
 
 export const getTaskStatus = asyncHandler(
   async (req: Request, res: Response) => {
-    const { taskId } = req.params;
+    const taskId = req.params.taskId as string;
     const status = await repositoryService.getTaskStatus(taskId);
     res.json({ success: true, data: status });
   }
