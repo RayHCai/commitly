@@ -1,0 +1,93 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-caret-blink {
+    animation: caret-blink 1.05s steps(1, end) infinite;
+  }
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@layer base {
+  :root {
+    /* Commitly palette: light mode only */
+    --background: #fafaf7;
+    --foreground: #1a1a17;
+
+    --surface: #ffffff;
+    --surface-subtle: #f4f4ef;
+
+    --border-light: #ecece8;
+    --border: #e5e5e0;
+
+    --card: #ffffff;
+    --card-foreground: #1a1a17;
+
+    --popover: #ffffff;
+    --popover-foreground: #1a1a17;
+
+    --primary: #1f3a2e;
+    --primary-foreground: #ffffff;
+    --primary-hover: #152821;
+
+    --secondary: #f4f4ef;
+    --secondary-foreground: #1a1a17;
+
+    --muted: #f4f4ef;
+    --muted-foreground: #8a8a82;
+
+    --accent: #c85a3c;
+    --accent-foreground: #ffffff;
+
+    --destructive: #b3261e;
+    --destructive-foreground: #ffffff;
+
+    --success: #2d7a4f;
+
+    --input: #d4d4cf;
+    --ring: #1f3a2e;
+
+    --text-secondary: #5c5c55;
+    --text-muted: #8a8a82;
+
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-ring;
+  }
+
+  .dashboard-shell :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  /* Headings use display serif via Tailwind font-serif */
+  .font-heading {
+    font-family: var(--font-display), Georgia, serif;
+  }
+}
