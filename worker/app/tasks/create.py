@@ -184,9 +184,12 @@ def create_matched(self, user_id: str, url: str, link_id: str) -> dict:
     # Batch-search all vectors in a single Weaviate connection
     valid_indices = [i for i, v in enumerate(query_vectors) if v is not None]
     valid_vectors = [query_vectors[i] for i in valid_indices]
+    valid_keywords = [requirements[i].get("keyword") for i in valid_indices]
 
     try:
-        batch_results = search_top_commits_batch(valid_vectors, user_id, top_k=3)
+        batch_results = search_top_commits_batch(
+            valid_vectors, user_id, top_k=3, query_keywords=valid_keywords
+        )
     except Exception as e:
         logger.error(f"Batch search failed: {e}")
         batch_results = [[] for _ in valid_indices]
