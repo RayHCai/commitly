@@ -11,6 +11,10 @@ export type RecruiterSkillProofCommit = {
   whyThisMatters: string;
   commitUrl: string;
   commitSha: string;
+  /** Optional short representative snippet shown in the hover reveal (Poster variant). */
+  codeSample?: string;
+  /** Language hint for syntax coloring. Undefined renders as plain monospace. */
+  codeLanguage?: "ts" | "tsx" | "py" | "sql";
 };
 
 export type RecruiterTopSkill = {
@@ -77,6 +81,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "The role needs engineers who catch problems before they affect users. This commit shows Jihan improving safety checks so mistakes surface early.",
         commitUrl: "#",
         commitSha: "a4f9c2e",
+        codeSample:
+          "type CustomerType = \"lead\" | \"customer\" | \"partner\";\n\nfunction assertCustomer(raw: unknown): CustomerType {\n  const t = (raw as { type?: string }).type;\n  if (t === \"lead\" || t === \"customer\" || t === \"partner\") return t;\n  throw new TypeError(`unknown customer type: ${t}`);\n}",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris backend",
@@ -87,6 +94,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Enterprise roles expect predictable login behavior. This change shows Jihan removing gaps that could confuse auditors or leave holes between screens.",
         commitUrl: "#",
         commitSha: "91be203",
+        codeSample:
+          "export function hasSession(\n  ctx: RequestCtx,\n): ctx is RequestCtx & { session: Session } {\n  return ctx.session !== null && ctx.session.expiresAt > Date.now();\n}",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris partner toolkit",
@@ -97,6 +107,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Partners send data at scale. This commit shows Jihan protecting downstream teams from bad inputs that would otherwise create noisy support tickets.",
         commitUrl: "#",
         commitSha: "c81d441",
+        codeSample:
+          "const PartnerForm = z.object({\n  companyId: z.string().uuid(),\n  contactEmail: z.string().email(),\n  role: z.enum([\"admin\", \"viewer\"]),\n});",
+        codeLanguage: "ts",
       },
     ],
   },
@@ -114,6 +127,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "This role involves integrations that must stay reliable. The commit shows Jihan designing for failure instead of hoping vendors behave perfectly.",
         commitUrl: "#",
         commitSha: "7e2ba91",
+        codeSample:
+          "const jobRunner = createWorker({\n  retry: { limit: 3, backoff: \"exp\" },\n  onFailure: (err, job) => deadLetter.push(job, err),\n  concurrency: 8,\n});",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris documentation",
@@ -134,6 +150,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Shared SaaS products need fairness at scale. This commit shows Jihan thinking about noisy neighbors before they become outages.",
         commitUrl: "#",
         commitSha: "55d8118",
+        codeSample:
+          "function bucketKey(tenantId: string, route: string) {\n  return `rl:${tenantId}:${routeFamily(route)}`;\n}\n\nawait limiter.consume(bucketKey(tenantId, req.path), 1);",
+        codeLanguage: "ts",
       },
     ],
   },
@@ -151,6 +170,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Marketing data volumes are huge. This commit proves Jihan can ship integrations that survive real-world interruptions.",
         commitUrl: "#",
         commitSha: "d902eef",
+        codeSample:
+          "let cursor = await checkpoint.get(syncId);\nwhile (true) {\n  const page = await hubspot.listOwners({ after: cursor, limit: 500 });\n  await upsert(page.results);\n  if (!page.paging?.next) break;\n  cursor = page.paging.next.after;\n  await checkpoint.set(syncId, cursor);\n}",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris connectors",
@@ -161,6 +183,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Vendor quirks break naive scripts. This change shows Jihan validating assumptions and avoiding runaway jobs.",
         commitUrl: "#",
         commitSha: "b2109aa",
+        codeSample:
+          "const batch = await sfBulk.fetchNextBatch(jobId);\nif (batch.records.length === 0 && batch.state === \"InProgress\") {\n  return { status: \"idle\", retryAfter: 30_000 };\n}",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris connectors",
@@ -171,6 +196,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Acme likely depends on uptime from partners it does not control. This commit highlights resilient habits for flaky networks.",
         commitUrl: "#",
         commitSha: "6fd9a41",
+        codeSample:
+          "async function withBackoff<T>(fn: () => Promise<T>, attempts = 5) {\n  for (let i = 0; i < attempts; i++) {\n    try { return await fn(); } catch (err) {\n      if (!isTransient(err)) throw err;\n      await sleep(250 * 2 ** i);\n    }\n  }\n  throw new Error(\"exhausted retries\");\n}",
+        codeLanguage: "ts",
       },
     ],
   },
@@ -188,6 +216,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Stolen credentials are a top risk for B2B products. This work shows Jihan tightening session hygiene beyond a basic password form.",
         commitUrl: "#",
         commitSha: "4c803d2",
+        codeSample:
+          "async function rotateRefresh(token: string) {\n  const prev = await store.get(token);\n  if (prev.usedAt) {\n    await audit.flag(prev.userId, \"refresh_replay\");\n    await sessions.revokeAll(prev.userId);\n    throw new AuthError(\"token_reuse_detected\");\n  }\n  await store.markUsed(token);\n  return issueRefresh(prev.userId);\n}",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris web app",
@@ -198,6 +229,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Enterprise buyers expect SSO to behave predictably. This commit reflects careful tenant-by-tenant configuration.",
         commitUrl: "#",
         commitSha: "e96f712",
+        codeSample:
+          "function assertAudience(assertion: SAMLAssertion, tenant: Tenant) {\n  if (assertion.audience !== tenant.samlAudience) {\n    throw new ConfigError(\"saml_audience_mismatch\", {\n      expected: tenant.samlAudience,\n      received: assertion.audience,\n    });\n  }\n}",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris web app",
@@ -208,6 +242,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Compliance-minded customers care about idle access. This change shows Jihan balancing usability with sensible session limits.",
         commitUrl: "#",
         commitSha: "3ac7e90",
+        codeSample:
+          "const IDLE_LIMIT_MS = 5 * 60 * 1000;\n\nwatchActivity((lastSeen) => {\n  if (Date.now() - lastSeen > IDLE_LIMIT_MS && session.scope === \"admin\") {\n    session.end(\"idle_timeout\");\n  }\n});",
+        codeLanguage: "ts",
       },
     ],
   },
@@ -225,6 +262,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "The role touches long-running backend work. This commit shows disciplined concurrency and safe releases.",
         commitUrl: "#",
         commitSha: "f21a880",
+        codeSample:
+          "const pool = new BoundedPool({ concurrency: 16 });\n\nprocess.on(\"SIGTERM\", async () => {\n  await pool.drain({ timeout: 30_000 });\n  process.exit(0);\n});",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris backend",
@@ -235,6 +275,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Data-heavy features are common in growth tools. This change proves Jihan can deliver exports that scale.",
         commitUrl: "#",
         commitSha: "19aa77d",
+        codeSample:
+          "async function* streamExport(tenantId: string) {\n  for await (const chunk of db.cursor(exportQuery(tenantId), { batchSize: 500 })) {\n    yield toCsv(chunk);\n  }\n}",
+        codeLanguage: "ts",
       },
       {
         projectName: "Iris web app",
@@ -245,6 +288,9 @@ export const recruiterTopSkills: RecruiterTopSkill[] = [
           "Reliable analytics matter for product decisions. This fix shows attention to race conditions that skew reporting.",
         commitUrl: "#",
         commitSha: "aa90233",
+        codeSample:
+          "useEffect(() => {\n  const ac = new AbortController();\n  track(\"page_view\", { signal: ac.signal });\n  return () => ac.abort();\n}, [pathname]);",
+        codeLanguage: "tsx",
       },
     ],
   },

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { RecruiterTopSkill } from "@/lib/mockData";
 import { lookupExplorerBySha } from "@/lib/commit-explorer-data";
 import { skillColorVar } from "./code-color";
+import { CodeSnippet } from "./code-snippet";
 
 type Layout = "row" | "stack" | "floating";
 type Variant = "full" | "clean";
@@ -184,6 +185,13 @@ export function SkillCommitPair({
               <div className="mt-4 border-t border-dashed border-[color:var(--paper-line-soft)] pt-3">
                 {isClean ? (
                   <>
+                    {c.codeSample && (
+                      <CodeSnippet
+                        code={c.codeSample}
+                        language={c.codeLanguage}
+                        className="mb-4"
+                      />
+                    )}
                     <p className="font-serif text-[12px] italic text-[color:var(--ink-muted)]">
                       Why this matters
                     </p>

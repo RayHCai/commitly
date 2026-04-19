@@ -2,11 +2,16 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 
+import { PaperSurface } from "@/components/recruiter/paper-surface";
+import {
+  Scene,
+  SceneBody,
+  SceneHeadline,
+  SceneSubheading,
+} from "@/components/scene/scene";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   COMMITLY_FLOW_KEY,
   defaultCommitlyFlowState,
@@ -28,15 +33,17 @@ function GitHubMark({ className }: { className?: string }) {
   );
 }
 
-const stepEnter = { opacity: 0, x: 16 };
-const stepCenter = { opacity: 1, x: 0 };
-const stepTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
+const guarantees = [
+  "Read your public and private repo metadata",
+  "Analyze commits and diffs to detect skills",
+  "Never modify anything, ever",
+] as const;
 
 export default function ConnectPage() {
   const router = useRouter();
   const [hydrated, setHydrated] = React.useState(false);
   const [flow, setFlow] = React.useState<CommitlyFlowState>(
-    defaultCommitlyFlowState()
+    defaultCommitlyFlowState(),
   );
 
   React.useEffect(() => {
@@ -47,9 +54,7 @@ export default function ConnectPage() {
         Boolean(parsed.jobUrl.trim()) ||
         Boolean(parsed.jobDescription.trim());
       const next: CommitlyFlowState =
-        hasJob && parsed.step === 1
-          ? { ...parsed, step: 2 }
-          : parsed;
+        hasJob && parsed.step === 1 ? { ...parsed, step: 2 } : parsed;
       setFlow(next);
     }
     setHydrated(true);
@@ -82,11 +87,13 @@ export default function ConnectPage() {
 
   if (!hydrated) {
     return (
-      <div className="min-h-screen bg-background px-6 py-12 md:py-16">
-        <div className="mx-auto max-w-[640px]">
-          <div className="h-8 w-40 animate-pulse rounded-md bg-muted" />
+      <PaperSurface>
+        <div className="mx-auto w-full max-w-[1000px] px-6 pt-16 md:px-10">
+          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--code-comment)]">
+            {"// loading..."}
+          </p>
         </div>
-      </div>
+      </PaperSurface>
     );
   }
 
@@ -94,89 +101,69 @@ export default function ConnectPage() {
     Boolean(flow.jobUrl.trim()) || Boolean(flow.jobDescription.trim());
   if (!hasJob) {
     return (
-      <div className="min-h-screen bg-background px-6 py-12 md:py-16">
-        <div className="mx-auto max-w-[640px]">
-          <p className="text-sm text-muted-foreground">Redirecting…</p>
+      <PaperSurface>
+        <div className="mx-auto w-full max-w-[1000px] px-6 pt-16 md:px-10">
+          <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--code-comment)]">
+            {"// redirecting..."}
+          </p>
         </div>
-      </div>
+      </PaperSurface>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background px-6 py-12 md:py-16">
-      <div className="mx-auto max-w-[640px]">
-        <motion.div
-          initial={stepEnter}
-          animate={stepCenter}
-          transition={stepTransition}
-        >
-          <h1 className="font-serif text-3xl font-normal tracking-tight text-foreground sm:text-4xl">
-            Let&apos;s look at your code.
-          </h1>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-[color:var(--text-secondary)]">
-            We&apos;ll pull your repos and commits to match them to the role you
-            shared. Your code stays yours.
-          </p>
+    <PaperSurface>
+      <Scene eyebrow="step 02 · github">
+        <SceneHeadline as="h1" size="lg">
+          Let&apos;s look
+          <br />
+          <span className="italic text-[color:var(--ink-muted)]">
+            at your code.
+          </span>
+        </SceneHeadline>
+        <SceneSubheading>
+          We pull your repos and commits to match them to the role. Your code
+          stays yours.
+        </SceneSubheading>
 
-          <Card className="mt-10 shadow-card hover:shadow-card">
-            <CardContent className="px-5 pb-6 pt-6 sm:px-6">
-              <div className="flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
-                <div className="flex justify-center md:block">
-                  <GitHubMark className="size-14 shrink-0 text-muted-foreground sm:size-16" />
-                </div>
-                <div className="min-w-0 flex-1 space-y-6">
-                  <ul className="space-y-4 text-sm leading-snug text-[color:var(--text-secondary)]">
-                    <li className="flex gap-3">
-                      <Check
-                        className="mt-0.5 size-4 shrink-0 text-primary"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      <span>Read your public and private repo metadata</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <Check
-                        className="mt-0.5 size-4 shrink-0 text-primary"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      <span>Analyze commits and diffs to detect skills</span>
-                    </li>
-                    <li className="flex gap-3">
-                      <Check
-                        className="mt-0.5 size-4 shrink-0 text-primary"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      <span>Never modify anything, ever</span>
-                    </li>
-                  </ul>
-                  <Button
-                    type="button"
-                    size="lg"
-                    className="h-11 w-full rounded-lg px-8 text-base font-medium"
-                    onClick={completeAndRoute}
-                  >
-                    Connect GitHub
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="mt-12 flex items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="px-0 text-muted-foreground hover:text-foreground"
-              onClick={handleBack}
-            >
-              Back
-            </Button>
+        <SceneBody className="mt-10 rounded-[10px] border border-[color:var(--paper-line)] bg-[color:var(--paper-bg-deep)] p-6 md:p-8">
+          <div className="flex flex-col gap-8 md:flex-row md:items-center md:gap-10">
+            <GitHubMark className="size-14 shrink-0 text-[color:var(--ink)] md:size-16" />
+            <div className="min-w-0 flex-1 space-y-6">
+              <ul className="space-y-3 text-[14px] leading-[1.55] text-[color:var(--ink-soft)]">
+                {guarantees.map((g) => (
+                  <li key={g} className="flex gap-3">
+                    <Check
+                      className="mt-0.5 size-4 shrink-0 text-[color:var(--code-string)]"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{g}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                type="button"
+                size="lg"
+                className="h-11 w-full rounded-[8px] bg-[color:var(--ink)] px-8 text-[15px] font-medium text-[color:var(--paper-bg)] hover:bg-[color:var(--ink-soft)]"
+                onClick={completeAndRoute}
+              >
+                Connect GitHub
+              </Button>
+            </div>
           </div>
-        </motion.div>
-      </div>
-    </div>
+        </SceneBody>
+
+        <div className="mt-10">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="font-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--code-comment)] transition-colors hover:text-[color:var(--ink)]"
+          >
+            ← back
+          </button>
+        </div>
+      </Scene>
+    </PaperSurface>
   );
 }
