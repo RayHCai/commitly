@@ -378,55 +378,97 @@ def search_top_commits_batch(
 
 def fetch_top_complex_commits(
     user_id: str,
-    top_k: int = 10,
-    candidate_limit: int = 500,
+    top_k: int = 20,
+    page_size: int = 500,
+    max_pages: int = 20,
 ) -> list[dict]:
     """Fetch the top commits by complexity_score from the user's tenant.
 
-    No query vector needed — uses property-based sorting.
+    No query vector needed — retrieves based on tags and ranks by
+    complexity/quality scores. Diffs are completely ignored.
     Deduplicates by commit_sha (since commits are chunked).
+    Paginates until at least top_k unique commits are found.
     """
     client = get_client()
     try:
         collection = client.collections.get(COLLECTION_NAME)
         tenant_collection = collection.with_tenant(user_id)
 
-        results = tenant_collection.query.fetch_objects(
-            limit=candidate_limit,
-            sort=Sort.by_property("complexity_score", ascending=False),
-        )
+        lightweight_props = [
+            "commit_sha",
+            "repo_name",
+            "message",
+            "author",
+            "tags",
+            "quality_score",
+            "complexity_score",
+            "summary_score",
+            "quality_reasoning",
+            "complexity_reasoning",
+            "summary_reasoning",
+        ]
 
-        # Deduplicate by commit_sha, keeping highest complexity chunk
         seen: dict[str, dict] = {}
-        for obj in results.objects:
-            sha = obj.properties["commit_sha"]
-            complexity = obj.properties.get("complexity_score", 0.0)
-            if sha not in seen or complexity > seen[sha]["complexity_score"]:
-                seen[sha] = {
-                    "commit_sha": sha,
-                    "repo_name": obj.properties["repo_name"],
-                    "message": obj.properties["message"],
-                    "diff": obj.properties.get("diff", ""),
-                    "author": obj.properties.get("author", ""),
-                    "tags": obj.properties.get("tags", []),
-                    "quality_score": obj.properties.get("quality_score", 0.0),
-                    "complexity_score": complexity,
-                    "summary_score": obj.properties.get("summary_score", 0.0),
-                    "quality_reasoning": obj.properties.get(
-                        "quality_reasoning", ""
-                    ),
-                    "complexity_reasoning": obj.properties.get(
-                        "complexity_reasoning", ""
-                    ),
-                    "summary_reasoning": obj.properties.get(
-                        "summary_reasoning", ""
-                    ),
-                }
+        offset = 0
+
+        for page in range(max_pages):
+            results = tenant_collection.query.fetch_objects(
+                limit=page_size,
+                offset=offset,
+                sort=Sort.by_property("complexity_score", ascending=False),
+                return_properties=lightweight_props,
+            )
+
+            if not results.objects:
+                break
+
+            for obj in results.objects:
+                sha = obj.properties["commit_sha"]
+                complexity = obj.properties.get("complexity_score", 0.0)
+                if sha not in seen or complexity > seen[sha]["complexity_score"]:
+                    seen[sha] = {
+                        "commit_sha": sha,
+                        "repo_name": obj.properties["repo_name"],
+                        "message": obj.properties["message"],
+                        "author": obj.properties.get("author", ""),
+                        "tags": obj.properties.get("tags", []),
+                        "quality_score": obj.properties.get("quality_score", 0.0),
+                        "complexity_score": complexity,
+                        "summary_score": obj.properties.get("summary_score", 0.0),
+                        "quality_reasoning": obj.properties.get(
+                            "quality_reasoning", ""
+                        ),
+                        "complexity_reasoning": obj.properties.get(
+                            "complexity_reasoning", ""
+                        ),
+                        "summary_reasoning": obj.properties.get(
+                            "summary_reasoning", ""
+                        ),
+                    }
+
+            logger.info(
+                f"Page {page + 1}: fetched {len(results.objects)} chunks, "
+                f"{len(seen)} unique commits so far"
+            )
+
+            if len(seen) >= top_k:
+                break
+
+            if len(results.objects) < page_size:
+                break
+
+            offset += page_size
 
         ranked = sorted(
             seen.values(),
             key=lambda x: (-x["complexity_score"], -x["quality_score"]),
+        )[:top_k]
+
+        logger.info(
+            f"Returning {len(ranked)} top commits from {len(seen)} unique "
+            f"(total chunks scanned: {offset + len(results.objects) if results.objects else offset})"
         )
-        return ranked[:top_k]
+
+        return ranked
     finally:
         client.close()

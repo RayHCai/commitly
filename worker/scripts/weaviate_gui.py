@@ -456,13 +456,22 @@ class WeaviateGUI:
                 pass
             tenant_collection = collection.with_tenant(self.current_tenant)
 
-            # Fetch all chunks (limit to 1000 for performance)
-            response = tenant_collection.query.fetch_objects(
-                limit=1000,
-                include_vector=False,
-            )
-
-            chunks = response.objects
+            # Fetch chunks in batches to avoid gRPC message size limit
+            chunks = []
+            batch_size = 50
+            offset = 0
+            while True:
+                response = tenant_collection.query.fetch_objects(
+                    limit=batch_size,
+                    offset=offset,
+                    include_vector=False,
+                )
+                if not response.objects:
+                    break
+                chunks.extend(response.objects)
+                offset += batch_size
+                if len(response.objects) < batch_size:
+                    break
 
             # Clear treeview
             self.chunks_tree.delete(*self.chunks_tree.get_children())

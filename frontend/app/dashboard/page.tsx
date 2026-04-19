@@ -137,6 +137,7 @@ function DashboardContent() {
   const [error, setError] = React.useState<string | null>(null);
   const [username, setUsername] = React.useState("");
   const [modalLink, setModalLink] = React.useState<LinkItem | null>(null);
+  const [creatingGeneral, setCreatingGeneral] = React.useState(false);
 
   React.useEffect(() => {
     try {
@@ -168,6 +169,48 @@ function DashboardContent() {
     // Remove the query param so a refresh doesn't re-open the modal
     router.replace("/dashboard", { scroll: false });
   }, [loading, newLinkId, links, router]);
+
+  const hasGeneralLink = links.some((l) => l.type === "GENERAL");
+
+  async function handleCreateGeneral() {
+    setCreatingGeneral(true);
+    try {
+      const res = await apiFetch<{ data: { id: string; status: string; existed?: boolean } }>(
+        "/links/general/create",
+        { method: "POST" },
+      );
+      if (res.data.existed) {
+        // Already active, just refresh
+        const updated = await apiFetch<{ data: LinkItem[] }>("/links");
+        setLinks(updated.data);
+      } else {
+        // Pending — poll until it becomes active
+        const linkId = res.data.id;
+        const poll = setInterval(async () => {
+          try {
+            const updated = await apiFetch<{ data: LinkItem[] }>("/links");
+            const general = updated.data.find((l) => l.id === linkId);
+            if (general) {
+              clearInterval(poll);
+              setLinks(updated.data);
+              setModalLink(general);
+              setCreatingGeneral(false);
+            }
+          } catch {}
+        }, 3000);
+        // Stop polling after 2 minutes
+        setTimeout(() => {
+          clearInterval(poll);
+          setCreatingGeneral(false);
+        }, 120000);
+        return;
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create general link";
+      setError(msg);
+    }
+    setCreatingGeneral(false);
+  }
 
   if (loading) {
     return (
@@ -201,6 +244,14 @@ function DashboardContent() {
         <p className="font-mono text-[13px] text-[color:var(--code-comment)]">
           Click + to create one.
         </p>
+        <button
+          type="button"
+          onClick={handleCreateGeneral}
+          disabled={creatingGeneral}
+          className="mt-4 rounded-md border border-[var(--paper-line)] px-4 py-2 font-mono text-[12px] text-[color:var(--code-comment)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[color:var(--ink)] disabled:opacity-50"
+        >
+          {creatingGeneral ? "creating…" : "create general link"}
+        </button>
       </div>
     );
   }
@@ -208,6 +259,21 @@ function DashboardContent() {
   return (
     <>
       <div className="flex h-full flex-col pt-4">
+        {!hasGeneralLink && (
+          <div className="mb-4 flex items-center justify-between rounded-md border border-dashed border-[var(--paper-line)] px-4 py-3">
+            <p className="font-mono text-[12px] text-[color:var(--code-comment)]">
+              No general profile link found.
+            </p>
+            <button
+              type="button"
+              onClick={handleCreateGeneral}
+              disabled={creatingGeneral}
+              className="rounded-md border border-[var(--paper-line)] px-3 py-1.5 font-mono text-[12px] text-[color:var(--code-comment)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[color:var(--ink)] disabled:opacity-50"
+            >
+              {creatingGeneral ? "creating…" : "create general link"}
+            </button>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           {links.map((link) => (
             <div

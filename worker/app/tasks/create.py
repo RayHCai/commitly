@@ -19,6 +19,7 @@ Start with a strong action verb (e.g. "Built", "Implemented", "Optimized", "Desi
 Return ONLY the sentence — no quotes, no extra text."""
 
 GENERAL_COMMIT_SUMMARY_PROMPT = """Write exactly ONE sentence (max 25 words) describing what this commit accomplished technically.
+Use the commit message and tags to understand the work done.
 Start with a strong action verb (e.g. "Built", "Implemented", "Optimized", "Designed").
 Return ONLY the sentence — no quotes, no extra text."""
 
@@ -296,7 +297,7 @@ def create_general_link(self, user_id: str, link_id: str) -> dict:
 
     self.update_state(state="PROGRESS", meta={"step": "fetching_top_commits"})
 
-    top_commits = fetch_top_complex_commits(user_id, top_k=10)
+    top_commits = fetch_top_complex_commits(user_id, top_k=20)
 
     if not top_commits:
         logger.warning(f"No commits found for user {user_id}")
@@ -306,9 +307,10 @@ def create_general_link(self, user_id: str, link_id: str) -> dict:
     self.update_state(state="PROGRESS", meta={"step": "summarizing"})
 
     def _summarize_general(c):
+        tags = ", ".join(c.get("tags", []))
         context = (
             f"Commit message: {c.get('message', '')}\n"
-            f"Diff:\n{c.get('diff', '')[:2500]}"
+            f"Tags: {tags}"
         )
         try:
             return gemini.generate(GENERAL_COMMIT_SUMMARY_PROMPT, context)
@@ -319,7 +321,7 @@ def create_general_link(self, user_id: str, link_id: str) -> dict:
     with ThreadPoolExecutor(max_workers=min(len(top_commits), 10)) as executor:
         summaries = list(executor.map(_summarize_general, top_commits))
 
-    # Format as a single requirement with 10 matched commits
+    # Format as a single requirement with top matched commits
     formatted_commits = []
     for c, summary in zip(top_commits, summaries):
         commit_url = (
@@ -330,7 +332,7 @@ def create_general_link(self, user_id: str, link_id: str) -> dict:
             "repoName": c["repo_name"],
             "url": commit_url,
             "message": c.get("message", ""),
-            "diff": c.get("diff", ""),
+            "diff": "",
             "tags": c.get("tags", []),
             "score": c.get("complexity_score", 0),
             "summary": summary,

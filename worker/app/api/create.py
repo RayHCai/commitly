@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from app.schemas.create import CreateRequest
+from app.schemas.create import CreateRequest, CreateGeneralRequest
 from app.schemas.ingest import TaskResponse, TaskStatusResponse
-from app.tasks.create import create_matched
+from app.tasks.create import create_matched, create_general_link
 
 router = APIRouter(tags=["create"])
 
@@ -11,6 +11,13 @@ router = APIRouter(tags=["create"])
 async def start_create(request: CreateRequest):
     """Queue a create-matched-contributions job."""
     task = create_matched.delay(request.user_id, request.url, request.link_id)
+    return TaskResponse(task_id=task.id)
+
+
+@router.post("/create-general", response_model=TaskResponse)
+async def start_create_general(request: CreateGeneralRequest):
+    """Queue a general-link creation job."""
+    task = create_general_link.delay(request.user_id, request.link_id)
     return TaskResponse(task_id=task.id)
 
 

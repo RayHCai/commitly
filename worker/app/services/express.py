@@ -9,6 +9,35 @@ logger = logging.getLogger(__name__)
 
 SERVICE_HEADERS = {"x-service-token": settings.SERVICE_TOKEN}
 
+MAX_RETRIES = 5
+RETRY_BASE_DELAY = 1.0  # seconds
+
+
+async def _request_with_retry(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    **kwargs,
+) -> httpx.Response:
+    """Make an HTTP request with retry + exponential backoff on 429 responses."""
+    for attempt in range(MAX_RETRIES + 1):
+        response = await client.request(method, url, **kwargs)
+        if response.status_code != 429 or attempt == MAX_RETRIES:
+            return response
+        delay = RETRY_BASE_DELAY * (2 ** attempt)
+        retry_after = response.headers.get("retry-after")
+        if retry_after:
+            try:
+                delay = max(delay, float(retry_after))
+            except ValueError:
+                pass
+        logger.warning(
+            f"Rate limited (429) on {url}, retrying in {delay:.1f}s "
+            f"(attempt {attempt + 1}/{MAX_RETRIES})"
+        )
+        await asyncio.sleep(delay)
+    return response  # unreachable but satisfies type checker
+
 
 async def fetch_commits(
     user_id: str, repo_name: str, since: str | None = None
@@ -38,7 +67,9 @@ async def fetch_commits(
             if since:
                 params["since"] = since
 
-            response = await client.get(
+            response = await _request_with_retry(
+                client,
+                "GET",
                 f"/github/repos/{owner}/{repo}/commits",
                 params=params,
                 headers=SERVICE_HEADERS,
@@ -76,7 +107,9 @@ async def fetch_commit_details(
 
     async def _fetch_one(client: httpx.AsyncClient, sha: str) -> dict:
         async with sem:
-            response = await client.get(
+            response = await _request_with_retry(
+                client,
+                "GET",
                 f"/github/repos/{owner}/{repo}/commits/{sha}",
                 params={"userId": user_id},
                 headers=SERVICE_HEADERS,
