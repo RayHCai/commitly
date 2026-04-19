@@ -110,7 +110,7 @@ export function HeroJobField({ className }: { className?: string }) {
             placeholder="Paste job posting URL"
             value={jobUrl}
             onChange={handleChange}
-            disabled={redirecting}
+            disabled
             className={cn(
               "h-10 w-full rounded-md border bg-[#f6f8fa] px-3 pr-10 font-mono text-sm text-[#1f2328] placeholder-[#656d76] outline-none transition-colors focus:bg-white md:h-11 md:text-sm",
               redirecting && "cursor-not-allowed bg-[#e8ecf0] text-[#656d76] opacity-60",
