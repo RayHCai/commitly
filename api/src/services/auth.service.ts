@@ -1,9 +1,9 @@
 import jwt from "jsonwebtoken";
 import { Octokit } from "octokit";
-import { prisma } from "../config/prisma";
-import { env } from "../config/env";
-import { ApiError } from "../utils/ApiError";
-import * as linkService from "./link.service";
+import { prisma } from "../config/prisma.js";
+import { env } from "../config/env.js";
+import { ApiError } from "../utils/ApiError.js";
+import * as linkService from "./link.service.js";
 
 interface GitHubTokenResponse {
   access_token: string;

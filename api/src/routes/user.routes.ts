@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth";
+import { authenticate } from "../middleware/auth.js";
 import {
   getMe,
   updateProfile,
   getPresignedUploadUrl,
   downloadResume,
-} from "../controllers/user.controller";
+} from "../controllers/user.controller.js";
 
 export const userRoutes = Router();
 

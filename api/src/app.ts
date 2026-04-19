@@ -3,9 +3,9 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
-import { env } from "./config/env";
-import { router } from "./routes";
-import { errorHandler } from "./middleware/errorHandler";
+import { env } from "./config/env.js";
+import { router } from "./routes/index.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 

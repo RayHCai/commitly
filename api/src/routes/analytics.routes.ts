@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth";
+import { authenticate } from "../middleware/auth.js";
 import {
   getLinkAnalytics,
   getAllLinksAnalytics,
-} from "../controllers/analytics.controller";
+} from "../controllers/analytics.controller.js";
 
 export const analyticsRoutes = Router();
 

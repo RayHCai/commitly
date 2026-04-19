@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import * as linkViewService from "../services/linkView.service";
-import { trackView } from "../middleware/trackView";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import * as linkViewService from "../services/linkView.service.js";
+import { trackView } from "../middleware/trackView.js";
 
 export const viewLink = asyncHandler(
   async (req: Request, res: Response) => {

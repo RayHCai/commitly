@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import * as githubService from "../services/github.service";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import * as githubService from "../services/github.service.js";
 
 export const getRepos = asyncHandler(
   async (req: Request, res: Response) => {

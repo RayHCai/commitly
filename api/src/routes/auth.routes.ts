@@ -3,7 +3,7 @@ import {
   githubRedirect,
   githubCallback,
   createPendingJob,
-} from "../controllers/auth.controller";
+} from "../controllers/auth.controller.js";
 
 export const authRoutes = Router();
 

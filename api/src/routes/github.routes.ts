@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { serviceOnly } from "../middleware/auth";
+import { serviceOnly } from "../middleware/auth.js";
 
 import {
   getRepos,
   getRepoCommits,
   getCommitDetail,
-} from "../controllers/github.controller";
+} from "../controllers/github.controller.js";
 
 export const githubRoutes = Router();
 

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import * as userService from "../services/user.service";
-import * as s3Service from "../services/s3.service";
-import { prisma } from "../config/prisma";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import * as userService from "../services/user.service.js";
+import * as s3Service from "../services/s3.service.js";
+import { prisma } from "../config/prisma.js";
 
 export const getMe = asyncHandler(
   async (req: Request, res: Response) => {

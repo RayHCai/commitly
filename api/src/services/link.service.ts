@@ -1,6 +1,6 @@
-import { prisma } from "../config/prisma";
-import { generateSlug } from "../utils/slug";
-import { ApiError } from "../utils/ApiError";
+import { prisma } from "../config/prisma.js";
+import { generateSlug } from "../utils/slug.js";
+import { ApiError } from "../utils/ApiError.js";
 
 
 interface CreatePendingLinkInput {

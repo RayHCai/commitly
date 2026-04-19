@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { authenticate, serviceOnly } from "../middleware/auth";
-import { createLink, completeLink, getShellLinks, getUserLinks, createGeneralLink, completeGeneralLink } from "../controllers/link.controller";
+import { authenticate, serviceOnly } from "../middleware/auth.js";
+import { createLink, completeLink, getShellLinks, getUserLinks, createGeneralLink, completeGeneralLink } from "../controllers/link.controller.js";
 
 export const linkRoutes = Router();
 

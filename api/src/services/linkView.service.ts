@@ -1,6 +1,6 @@
-import { prisma } from "../config/prisma";
-import { ApiError } from "../utils/ApiError";
-import { env } from "../config/env";
+import { prisma } from "../config/prisma.js";
+import { ApiError } from "../utils/ApiError.js";
+import { env } from "../config/env.js";
 
 export async function getLinkPageData(username: string, slug: string) {
   const link = await prisma.customLink.findFirst({
