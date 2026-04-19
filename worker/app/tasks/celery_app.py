@@ -18,6 +18,7 @@ celery_app.conf.update(
     task_routes={
         "app.tasks.ingest.*": {"queue": "ingest"},
         "app.tasks.create.*": {"queue": "create"},
+        "app.tasks.deliberate.*": {"queue": "ingest"},
     },
 )
 

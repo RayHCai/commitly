@@ -39,10 +39,37 @@ def embed_chunks(chunks: list[str]) -> list[list[float]]:
     return [gemini.embed_text(chunk) for chunk in chunks]
 
 
+_SKIP_EXTENSIONS = {".md", ".markdown", ".txt", ".text", ".rst"}
+
+
+def _strip_deletions(diff: str) -> str:
+    """Remove deletion lines and skip markdown/text file sections from a unified diff."""
+    lines = diff.splitlines()
+    result = []
+    skip_file = False
+
+    for line in lines:
+        if line.startswith("diff --git"):
+            # Extract filename from 'diff --git a/path b/path'
+            parts = line.rsplit(" b/", 1)
+            filename = parts[1] if len(parts) == 2 else ""
+            skip_file = any(filename.endswith(ext) for ext in _SKIP_EXTENSIONS)
+            if skip_file:
+                continue
+
+        if skip_file:
+            continue
+
+        if not line.startswith("-") or line.startswith("---"):
+            result.append(line)
+
+    return "\n".join(result)
+
+
 def prepare_commit_text(commit: dict) -> str:
     """Format a commit dict into a single string for embedding."""
     message = commit.get("message", "")
-    diff = commit.get("diff", "")
+    diff = _strip_deletions(commit.get("diff", ""))
     return f"{message}\n\n{diff}"
 
 

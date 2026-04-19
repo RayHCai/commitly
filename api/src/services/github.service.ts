@@ -1,5 +1,6 @@
 import { Octokit } from "octokit";
 import { prisma } from "../config/prisma";
+import { cacheGet, cacheSet } from "../config/redis";
 import { ApiError } from "../utils/ApiError";
 
 async function getOctokitForUser(userId: string) {
@@ -16,6 +17,10 @@ async function getOctokitForUser(userId: string) {
 }
 
 export async function getUserRepos(userId: string) {
+  const cacheKey = `github:repos:${userId}`;
+  const cached = await cacheGet<any[]>(cacheKey);
+  if (cached) return cached;
+
   const octokit = await getOctokitForUser(userId);
 
   const repos = await octokit.rest.repos.listForAuthenticatedUser({
@@ -24,6 +29,7 @@ export async function getUserRepos(userId: string) {
     type: "all",
   });
 
+  await cacheSet(cacheKey, repos.data, 600); // 10 min TTL
   return repos.data;
 }
 
@@ -32,7 +38,8 @@ export async function getRepoCommits(
   owner: string,
   repo: string,
   page = 1,
-  perPage = 30
+  perPage = 30,
+  since?: string
 ) {
   const octokit = await getOctokitForUser(userId);
 
@@ -41,6 +48,7 @@ export async function getRepoCommits(
     repo,
     page,
     per_page: perPage,
+    ...(since ? { since } : {}),
   });
 
   return commits.data;

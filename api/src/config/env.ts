@@ -18,6 +18,8 @@ const envSchema = z.object({
   S3_BUCKET_NAME: z.string(),
   SERVICE_TOKEN: z.string(),
   FRONTEND_URL: z.string().url(),
+  WORKER_URL: z.string().url(),
+  REDIS_URL: z.string().default("redis://localhost:6379"),
 });
 
 export const env = envSchema.parse(process.env);
