@@ -4,10 +4,20 @@ import { env } from "./env.js";
 export const redis = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: 3,
   lazyConnect: true,
+  retryStrategy(times) {
+    if (times > 3) return null; // stop retrying after 3 attempts
+    return Math.min(times * 200, 1000);
+  },
 });
 
+let redisAvailable = false;
+redis.on("ready", () => { redisAvailable = true; });
 redis.on("error", (err) => {
-  console.error("Redis connection error:", err.message);
+  if (redisAvailable || err.message !== (redis as any)._lastRedisErr) {
+    console.error("Redis connection error:", err.message);
+    (redis as any)._lastRedisErr = err.message;
+  }
+  redisAvailable = false;
 });
 
 const DEFAULT_TTL = 300; // 5 minutes
