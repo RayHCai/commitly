@@ -36,7 +36,7 @@ export const getPresignedUploadUrl = asyncHandler(
 
 export const downloadResume = asyncHandler(
   async (req: Request, res: Response) => {
-    const { username } = req.params;
+    const username = req.params.username as string;
 
     const user = await prisma.user.findUnique({
       where: { username },
