@@ -48,7 +48,7 @@ export function HeroJobField({ className }: { className?: string }) {
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "mx-auto mt-10 flex w-full max-w-xl flex-col gap-3 sm:mt-12 md:mt-14 md:max-w-2xl md:flex-row md:items-center md:gap-3",
+        "flex w-full max-w-xl flex-col gap-3 md:flex-row md:items-center md:gap-3",
         className
       )}
     >
