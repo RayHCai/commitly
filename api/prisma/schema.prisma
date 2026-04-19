@@ -39,31 +39,10 @@ model Repository {
   updatedAt      DateTime  @updatedAt
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  commits Commit[]
 
   @@unique([userId, githubRepoId])
   @@index([userId])
   @@map("repositories")
-}
-
-model Commit {
-  id           String   @id @default(cuid())
-  repositoryId String
-  sha          String
-  message      String
-  authorName   String
-  authorEmail  String?
-  committedAt  DateTime
-  diffSummary  String?
-  complexity   Float?
-  tags         String[]
-  createdAt    DateTime @default(now())
-
-  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-
-  @@unique([repositoryId, sha])
-  @@index([repositoryId])
-  @@map("commits")
 }
 
 enum LinkStatus {
@@ -84,12 +63,45 @@ model CustomLink {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  views LinkView[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  views        LinkView[]
+  requirements Requirement[]
 
   @@unique([userId, slug])
   @@index([userId])
   @@map("custom_links")
+}
+
+model Requirement {
+  id           String          @id @default(cuid())
+  customLinkId String
+  name         String
+  description  String
+  createdAt    DateTime        @default(now())
+
+  customLink     CustomLink      @relation(fields: [customLinkId], references: [id], onDelete: Cascade)
+  matchedCommits MatchedCommit[]
+
+  @@index([customLinkId])
+  @@map("requirements")
+}
+
+model MatchedCommit {
+  id            String   @id @default(cuid())
+  requirementId String
+  commitSha     String
+  repoName      String
+  url           String
+  message       String
+  diff          String   @db.Text
+  tags          String[] @default([])
+  score         Float
+  createdAt     DateTime @default(now())
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@index([requirementId])
+  @@map("matched_commits")
 }
 
 model LinkView {

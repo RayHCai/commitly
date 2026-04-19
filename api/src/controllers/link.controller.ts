@@ -57,13 +57,11 @@ export const createLink = asyncHandler(
 
 export const completeLink = asyncHandler(
   async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const {
       company,
       job_title,
       position_id,
-      requirements_summary,
-      nice_to_have_summary,
       error,
     } = req.body;
 
@@ -83,8 +81,6 @@ export const completeLink = asyncHandler(
       company,
       jobTitle: job_title,
       positionId: position_id || null,
-      requirementsSummary: requirements_summary || "",
-      niceToHaveSummary: nice_to_have_summary || "",
     });
 
     const user = await prisma.user.findUnique({
