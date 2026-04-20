@@ -268,10 +268,18 @@ export function AgentAnimation({ taskId, onComplete }: AgentAnimationProps) {
 
         // Continue polling
         timeoutId = setTimeout(poll, 2000);
-      } catch {
-        // Network error — retry
-        if (active) {
+      } catch (err) {
+        if (!active) return;
+        // Only retry on network errors, not HTTP 4xx/5xx
+        const isNetworkError =
+          err instanceof TypeError || (err instanceof Error && err.message === "Failed to fetch");
+        if (isNetworkError) {
           timeoutId = setTimeout(poll, 3000);
+        } else {
+          // HTTP error (400, 404, etc.) — stop polling and show error
+          setStep("error");
+          setError(true);
+          toast.error(err instanceof Error ? err.message : "Task polling failed");
         }
       }
     }
