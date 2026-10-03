@@ -64,3 +64,6 @@ venv/
 .claude/
 CLAUDE.md
 AGENTS.md
+
+# AI session notes
+claude_code_context.md
